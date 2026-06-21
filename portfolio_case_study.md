@@ -85,6 +85,16 @@ Spatial confidence:
 
 The large share of low-confidence geography is an important analytical finding: many systems can be scored from SDWA records, but not all can be mapped with verified service-area boundaries.
 
+### Sample findings
+
+These observations come directly from the scored Ohio prototype:
+
+1. **County concentration.** Columbiana County had the largest number of high-review records (13), followed by Mahoning and Summit counties (11 each). High-review records are spread across many counties rather than concentrated in a single metro area.
+2. **Size pattern in the highest tiers.** Every one of the 188 High Review records was a small, very small, or medium system; no large system reached the High Review tier. Small systems also showed the highest high-review rate (2.5%, versus 1.0% for very small, 1.9% for medium, and 0% for large), consistent with the project's focus on smaller systems that often have less staff and grant capacity.
+3. **Geography uncertainty is separated, not hidden.** About 93% of records (15,262 of 16,339) carry low or unknown spatial confidence and are flagged separately from the 1,077 records with medium or high confidence. This keeps county-centroid fallback placement from being overinterpreted as a verified service-area location.
+
+These are screening observations from public data, not regulatory findings about any individual system.
+
 ## 10. Validation and Limitations
 
 Validation passed 13 checks, including duplicate PWSID detection, score bounds, required columns, valid risk tiers, valid spatial confidence, valid funding match confidence, and row-count consistency.
