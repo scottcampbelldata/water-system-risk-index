@@ -11,8 +11,24 @@ const state = {
   selected: null,
   map: null,
   markerLayer: null,
+  boundaryLayer: null,
+  countyLayer: null,
   markerByPwsid: new Map(),
   loadToken: 0
+};
+
+const geometryTierLabels = {
+  verified_service_area_boundary: "System-Sourced Service Area",
+  modeled_service_area_boundary: "Modeled Service Area",
+  validated_system_coordinate: "Approximate Location",
+  city_or_zip_centroid: "Approximate Location",
+  county_centroid: "Approximate Location",
+  unmatched: "Unmatched Geography"
+};
+
+const boundaryColors = {
+  verified_service_area_boundary: "#14746f",
+  modeled_service_area_boundary: "#b98322"
 };
 
 const colors = {
@@ -39,15 +55,19 @@ const els = {
   metricTotal: document.getElementById("metricTotal"),
   metricHigh: document.getElementById("metricHigh"),
   metricCritical: document.getElementById("metricCritical"),
-  metricSpatial: document.getElementById("metricSpatial"),
   metricValidation: document.getElementById("metricValidation"),
+  geoVerified: document.getElementById("geoVerified"),
+  geoModeled: document.getElementById("geoModeled"),
+  geoApproximate: document.getElementById("geoApproximate"),
+  geoUnmatched: document.getElementById("geoUnmatched"),
+  geoSourceProtection: document.getElementById("geoSourceProtection"),
   useNotice: document.getElementById("useNotice"),
   sourceNote: document.getElementById("sourceNote"),
   searchInput: document.getElementById("searchInput"),
   countyFilter: document.getElementById("countyFilter"),
   tierFilter: document.getElementById("tierFilter"),
   sizeFilter: document.getElementById("sizeFilter"),
-  spatialFilter: document.getElementById("spatialFilter"),
+  geographyFilter: document.getElementById("geographyFilter"),
   showAllMarkers: document.getElementById("showAllMarkers"),
   resetFilters: document.getElementById("resetFilters"),
   tierLegend: document.getElementById("tierLegend"),
@@ -95,7 +115,7 @@ function filterParams() {
   if (els.countyFilter.value) params.set("county", els.countyFilter.value);
   if (els.tierFilter.value) params.set("tier", els.tierFilter.value);
   if (els.sizeFilter.value) params.set("size", els.sizeFilter.value);
-  if (els.spatialFilter.value) params.set("spatial", els.spatialFilter.value);
+  if (els.geographyFilter.value) params.set("geography", els.geographyFilter.value);
   return params;
 }
 
@@ -120,12 +140,17 @@ function initFilters(metadata) {
   els.sizeFilter.appendChild(option("All sizes", ""));
   ["very_small", "small", "medium", "large", "unknown"].forEach(size => els.sizeFilter.appendChild(option(size.replace("_", " "), size)));
 
-  els.spatialFilter.appendChild(option("All spatial confidence", ""));
-  ["high", "medium", "low", "unknown"].forEach(value => els.spatialFilter.appendChild(option(value)));
+  els.geographyFilter.appendChild(option("All geography", ""));
+  [
+    ["System-Sourced Service Area", "verified"],
+    ["Modeled Service Area", "modeled"],
+    ["Approximate Location", "approximate"],
+    ["Unmatched Geography", "unmatched"]
+  ].forEach(([label, value]) => els.geographyFilter.appendChild(option(label, value)));
 
   const onFilterChange = () => { state.page = 1; applyFilters({ resetSelection: true }); };
   els.searchInput.addEventListener("input", debounce(onFilterChange, 250));
-  [els.countyFilter, els.tierFilter, els.sizeFilter, els.spatialFilter].forEach(el => {
+  [els.countyFilter, els.tierFilter, els.sizeFilter, els.geographyFilter].forEach(el => {
     el.addEventListener("input", onFilterChange);
   });
 
@@ -139,7 +164,7 @@ function initFilters(metadata) {
     els.countyFilter.value = "";
     els.tierFilter.value = "";
     els.sizeFilter.value = "";
-    els.spatialFilter.value = "";
+    els.geographyFilter.value = "";
     els.showAllMarkers.checked = false;
     state.page = 1;
     applyFilters({ resetSelection: true });
@@ -182,6 +207,8 @@ async function applyFilters({ resetSelection } = { resetSelection: true }) {
 
   render();
   fitMapToFiltered();
+  // Service-area boundaries can be a few MB statewide; load them without blocking the dashboard.
+  loadBoundaries(token, base);
 }
 
 function renderMetrics() {
@@ -190,8 +217,14 @@ function renderMetrics() {
   els.metricTotal.textContent = formatNumber(summary.total);
   els.metricHigh.textContent = formatNumber(tierCount("High Review"));
   els.metricCritical.textContent = formatNumber(tierCount("Critical Review"));
-  els.metricSpatial.textContent = formatNumber(summary.lowSpatial);
   els.metricValidation.textContent = `${state.metadata.validationPassCount}/${state.metadata.validationCheckCount}`;
+
+  const geo = summary.geography || {};
+  els.geoVerified.textContent = formatNumber(geo.verifiedServiceAreas);
+  els.geoModeled.textContent = formatNumber(geo.modeledServiceAreas);
+  els.geoApproximate.textContent = formatNumber(geo.approximateLocations);
+  els.geoUnmatched.textContent = formatNumber(geo.unmatchedGeography);
+  els.geoSourceProtection.textContent = "Not loaded (Phase 1)";
 }
 
 function renderLegend() {
@@ -252,8 +285,47 @@ function initializeMap() {
   }).addTo(state.map);
 
   state.markerLayer = L.layerGroup().addTo(state.map);
+  state.boundaryLayer = L.geoJSON(null, {
+    style: feature => ({
+      color: boundaryColors[feature.properties.geometrySourceTier] || "#64748b",
+      weight: 1,
+      fillColor: boundaryColors[feature.properties.geometrySourceTier] || "#64748b",
+      fillOpacity: 0.18
+    }),
+    onEachFeature: (feature, layer) => {
+      layer.on("click", () => selectByPwsid(feature.properties.pwsid, false));
+    }
+  }).addTo(state.map);
+  state.countyLayer = L.geoJSON(null, {
+    style: { color: "#94a3b8", weight: 1, fill: false, dashArray: "3 3" }
+  });
+
+  L.control.layers(null, {
+    "Water system records": state.markerLayer,
+    "Service area boundaries": state.boundaryLayer,
+    "County boundaries": state.countyLayer
+  }, { collapsed: false }).addTo(state.map);
+
+  // County boundaries are a static asset, loaded once and toggled off by default.
+  fetch("data/ohio_counties.geojson")
+    .then(response => response.ok ? response.json() : null)
+    .then(geojson => { if (geojson) state.countyLayer.addData(geojson); })
+    .catch(() => {});
+
   setTimeout(() => state.map.invalidateSize(), 150);
   window.addEventListener("resize", () => state.map.invalidateSize());
+}
+
+async function loadBoundaries(token, base) {
+  try {
+    const collection = await api("/map/boundaries", base);
+    if (token !== state.loadToken || !state.boundaryLayer) return;
+    state.boundaryLayer.clearLayers();
+    state.boundaryLayer.addData(collection);
+  } catch (error) {
+    // Boundaries are an enhancement layer; failure should not break the dashboard.
+    if (state.boundaryLayer) state.boundaryLayer.clearLayers();
+  }
 }
 
 function mapPopup(system) {
@@ -262,7 +334,7 @@ function mapPopup(system) {
       <h3>${system.name}</h3>
       <p><strong>${system.pwsid}</strong> | ${system.county}</p>
       <p>Score <strong>${formatScore(system.score)}</strong> | ${system.tier}</p>
-      <p>Population ${formatNumber(system.population)} | Spatial ${system.spatialConfidence}</p>
+      <p>Population ${formatNumber(system.population)} | ${geometryTierLabels[system.geometrySourceTier] || String(system.spatialConfidence || "").replace(/_/g, " ")}</p>
       <p>${(system.drivers || []).filter(Boolean).slice(0, 2).join(" + ")}</p>
     </div>
   `;
@@ -362,7 +434,7 @@ function renderTable() {
       <td><strong>${formatScore(system.score)}</strong></td>
       <td><span class="pill" style="background:${colors[system.tier]}">${system.tier}</span></td>
       <td>${system.drivers[0]}</td>
-      <td>${system.spatialConfidence}</td>
+      <td>${String(system.spatialConfidence || "").replace(/_/g, " ")}</td>
     </tr>
   `).join("");
 
@@ -379,6 +451,31 @@ function renderComponentBars(system) {
       <strong>${formatScore(value)}</strong>
     </div>
   `).join("");
+}
+
+function geographyEvidenceRow(label, value) {
+  if (value === null || value === undefined || value === "") return "";
+  return `<div class="evidence-row"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function renderGeographyEvidence(system) {
+  const tierLabel = geometryTierLabels[system.geometrySourceTier] || "--";
+  const matched = ["verified_service_area_boundary", "modeled_service_area_boundary"].includes(system.geometrySourceTier);
+  const primary = matched ? "EPA service-area polygon" : (system.geometrySourceTier === "county_centroid" ? "County centroid (approximate)" : "No geography matched");
+  return `
+    <div class="evidence">
+      <h4>Geography evidence</h4>
+      ${geographyEvidenceRow("Primary geometry", primary)}
+      ${geographyEvidenceRow("Source", tierLabel)}
+      ${geographyEvidenceRow("Boundary type", system.boundaryType ? system.boundaryType.replace("_", "-") : "n/a")}
+      ${geographyEvidenceRow("Provider", system.boundaryProvider || "n/a")}
+      ${geographyEvidenceRow("PWSID match", system.matchMethod ? system.matchMethod.replace("_", " ") : "n/a")}
+      ${matched ? geographyEvidenceRow("Service area", `${formatNumber(system.areaSqKm)} km²`) : ""}
+      ${geographyEvidenceRow("Spatial confidence", String(system.spatialConfidence || "").replace(/_/g, " "))}
+      ${geographyEvidenceRow("Source protection", "Not evaluated (Phase 1)")}
+      <p class="muted evidence-note">${system.spatialLimitationNote || ""}</p>
+    </div>
+  `;
 }
 
 function renderDetail() {
@@ -408,6 +505,7 @@ function renderDetail() {
       <div class="fact"><span>Drought component</span><strong>${formatScore(system.components.drought_component)}</strong></div>
     </div>
     <div class="component-grid">${renderComponentBars(system)}</div>
+    ${renderGeographyEvidence(system)}
     <p>${system.explanation}</p>
     <p class="muted">Funding match: ${system.fundingMatchConfidence}. ${system.fundingNotes}</p>
   `;

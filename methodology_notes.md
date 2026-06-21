@@ -10,7 +10,10 @@ It is not a regulatory determination, legal finding, engineering siting tool, of
 
 - Prototype state: Ohio
 - Records scored: 16,339 Ohio public water system records
+- Service-area boundaries: 1,077 EPA polygons (207 system-sourced, 870 modeled)
 - Model version: 0.1.0
+- Validation: 19 checks (expanded from 13 to cover geometry source tier, boundary
+  dissolve, count reconciliation, and simplification quality)
 - Final scoring output: `data/processed/water_system_risk_scores.csv`
 - Power BI fact table: `data/powerbi/FactRiskScores.csv`
 
@@ -35,6 +38,29 @@ Each component is normalized to 0-100 before weighting:
 - Moderate Review: score >= 45 and < 65
 - Monitor: score >= 25 and < 45
 - Lower Priority: score < 25
+
+## Geography and Spatial Confidence
+
+Each record is mapped using the most precise geometry available, and the geometry
+source is tracked explicitly. Real EPA service-area polygons are used where they
+exist; the original geometry is preserved in an audit artifact and a topology-
+simplified copy is served to the map.
+
+| Geometry source tier | User-facing label | Spatial confidence |
+|---|---|---|
+| `verified_service_area_boundary` (EPA `Symbology_Field = System Sourced`) | System-Sourced Service Area | very_high |
+| `modeled_service_area_boundary` (EPA modeled) | Modeled Service Area | medium_high |
+| `validated_system_coordinate` | Approximate Location | medium |
+| `city_or_zip_centroid` | Approximate Location | low |
+| `county_centroid` | Approximate Location | very_low |
+| `unmatched` | Unmatched Geography | unknown |
+
+Modeled EPA boundaries are screening/visualization context, not legal service-area
+determinations, and are not labeled "verified." Service-area boundaries (who may
+receive water) are kept separate from source-water protection areas (where supply
+is protected); the latter is a planned Phase 2 overlay. In the current Ohio run,
+1,077 of 16,339 records have a service-area polygon (207 system-sourced, 870
+modeled); the remainder fall back to county centroids or are unmatched.
 
 ## Key Assumptions
 

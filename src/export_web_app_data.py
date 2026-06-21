@@ -46,7 +46,13 @@ def export_web_app_data() -> Path:
                     "pwsid",
                     "latitude",
                     "longitude",
+                    "geometry_source_tier",
+                    "boundary_type",
+                    "boundary_provider",
+                    "match_method",
+                    "area_sqkm",
                     "spatial_confidence",
+                    "spatial_limitation_note",
                     "geo_join_confidence",
                     "overall_svi_percentile",
                     "recent_drought_exposure_score",
@@ -117,7 +123,13 @@ def export_web_app_data() -> Path:
                 "explanation": clean_text(record["explanation_text"]),
                 "latitude": clean_number(record["latitude"], 6),
                 "longitude": clean_number(record["longitude"], 6),
+                "geometrySourceTier": clean_text(record["geometry_source_tier"]),
+                "boundaryType": clean_text(record["boundary_type"]),
+                "boundaryProvider": clean_text(record["boundary_provider"]),
+                "matchMethod": clean_text(record["match_method"]),
+                "areaSqKm": clean_number(record["area_sqkm"], 4),
                 "spatialConfidence": clean_text(record["spatial_confidence"]),
+                "spatialLimitationNote": clean_text(record["spatial_limitation_note"]),
                 "geoJoinConfidence": clean_text(record["geo_join_confidence"]),
                 "svi": clean_number(record["overall_svi_percentile"], 4),
                 "droughtExposure": clean_number(record["recent_drought_exposure_score"], 2),
@@ -168,6 +180,15 @@ def export_web_app_data() -> Path:
         for tier in tier_order
     ]
 
+    approximate_tiers = ["validated_system_coordinate", "city_or_zip_centroid", "county_centroid"]
+    geography_breakdown = {
+        "verifiedServiceAreas": int((df["geometry_source_tier"] == "verified_service_area_boundary").sum()),
+        "modeledServiceAreas": int((df["geometry_source_tier"] == "modeled_service_area_boundary").sum()),
+        "approximateLocations": int(df["geometry_source_tier"].isin(approximate_tiers).sum()),
+        "unmatchedGeography": int((df["geometry_source_tier"] == "unmatched").sum()),
+        "sourceProtectionStatus": "not_loaded_phase_1",
+    }
+
     metadata = {
         "title": "Water System Risk & Funding Priority Index",
         "state": "Ohio",
@@ -176,7 +197,7 @@ def export_web_app_data() -> Path:
         "systemCount": int(len(df)),
         "highReviewCount": int(df["risk_tier"].isin(high_tiers).sum()),
         "criticalReviewCount": int(df["risk_tier"].eq("Critical Review").sum()),
-        "lowSpatialCount": int(df["spatial_confidence"].isin(["low", "unknown"]).sum()),
+        "geographyBreakdown": geography_breakdown,
         "validationPassCount": int(quality["status"].eq("pass").sum()),
         "validationCheckCount": int(len(quality)),
         "sourceNote": "Public-data screening model using EPA ECHO SDWA, EPA service areas, CDC/ATSDR SVI, Census TIGER/Line, and U.S. Drought Monitor county data.",
@@ -196,7 +217,30 @@ def export_web_app_data() -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(output, separators=(",", ":"), ensure_ascii=True), encoding="utf-8")
     print(f"Wrote {output_path} ({len(systems):,} systems)")
+
+    export_boundaries_seed()
     return output_path
+
+
+def export_boundaries_seed() -> Path:
+    """Write the simplified service-area boundary seed (pwsid -> geometry + lineage)."""
+    web_path = REPO_ROOT / "data" / "interim" / "service_area_boundaries_web.parquet"
+    boundaries: dict[str, dict] = {}
+    if web_path.exists():
+        web = pd.read_parquet(web_path)
+        for row in web.itertuples(index=False):
+            boundaries[str(row.pwsid)] = {
+                "geometry": json.loads(row.geometry_geojson),
+                "boundaryType": clean_text(row.boundary_type),
+                "geometrySourceTier": clean_text(row.geometry_source_tier),
+                "boundaryProvider": clean_text(row.boundary_provider),
+                "matchMethod": clean_text(row.match_method),
+                "areaSqKm": clean_number(row.area_sqkm, 4),
+            }
+    boundaries_path = REPO_ROOT / "data" / "processed" / "boundaries.json"
+    boundaries_path.write_text(json.dumps(boundaries, separators=(",", ":"), ensure_ascii=True), encoding="utf-8")
+    print(f"Wrote {boundaries_path} ({len(boundaries):,} boundaries)")
+    return boundaries_path
 
 
 if __name__ == "__main__":
