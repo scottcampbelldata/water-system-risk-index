@@ -11,9 +11,10 @@ It is not a regulatory determination, legal finding, engineering siting tool, of
 - Prototype state: Ohio
 - Records scored: 16,339 Ohio public water system records
 - Service-area boundaries: 1,077 EPA polygons (207 system-sourced, 870 modeled)
+- Source-water protection (SWAP): 7,390 Ohio EPA areas covering 3,751 systems
 - Model version: 0.1.0
-- Validation: 19 checks (expanded from 13 to cover geometry source tier, boundary
-  dissolve, count reconciliation, and simplification quality)
+- Validation: 22 checks (expanded from 13 to cover geometry source tier, boundary
+  dissolve, count reconciliation, simplification quality, and SWAP areas)
 - Final scoring output: `data/processed/water_system_risk_scores.csv`
 - Power BI fact table: `data/powerbi/FactRiskScores.csv`
 
@@ -56,11 +57,19 @@ simplified copy is served to the map.
 | `unmatched` | Unmatched Geography | unknown |
 
 Modeled EPA boundaries are screening/visualization context, not legal service-area
-determinations, and are not labeled "verified." Service-area boundaries (who may
-receive water) are kept separate from source-water protection areas (where supply
-is protected); the latter is a planned Phase 2 overlay. In the current Ohio run,
-1,077 of 16,339 records have a service-area polygon (207 system-sourced, 870
-modeled); the remainder fall back to county centroids or are unmatched.
+determinations, and are not labeled "verified." In the current Ohio run, 1,077 of
+16,339 records have a service-area polygon (207 system-sourced, 870 modeled); the
+remainder fall back to county centroids or are unmatched.
+
+Source-water protection areas (SWAP) are kept strictly separate from service-area
+boundaries: a service area describes who may receive water, while a SWAP area
+describes where the supply is protected around wells or surface-water intakes.
+Ohio EPA SWAP polygons (groundwater protection areas, inner management zones, and
+inland / Lake Erie / Ohio River surface-water areas) are loaded as a distinct
+overlay — 7,390 dissolved areas covering 3,751 systems — and surfaced per system
+as a `source_protection_status` of `available` or `none`. Facility points
+(wells/intakes/treatment plants) are deferred: no public Ohio source publishes
+usable coordinates.
 
 ## Key Assumptions
 

@@ -181,12 +181,19 @@ def export_web_app_data() -> Path:
     ]
 
     approximate_tiers = ["validated_system_coordinate", "city_or_zip_centroid", "county_centroid"]
+    swap_path = REPO_ROOT / "data" / "processed" / "swap_areas.json"
+    source_protection_available = 0
+    if swap_path.exists():
+        swap = json.loads(swap_path.read_text(encoding="utf-8"))
+        covered = {area.get("pwsid") for area in swap}
+        source_protection_available = int(df["pwsid"].isin(covered).sum())
     geography_breakdown = {
         "verifiedServiceAreas": int((df["geometry_source_tier"] == "verified_service_area_boundary").sum()),
         "modeledServiceAreas": int((df["geometry_source_tier"] == "modeled_service_area_boundary").sum()),
         "approximateLocations": int(df["geometry_source_tier"].isin(approximate_tiers).sum()),
         "unmatchedGeography": int((df["geometry_source_tier"] == "unmatched").sum()),
-        "sourceProtectionStatus": "not_loaded_phase_1",
+        "sourceProtectionStatus": "loaded" if swap_path.exists() else "not_loaded_phase_1",
+        "sourceProtectionAvailable": source_protection_available,
     }
 
     metadata = {

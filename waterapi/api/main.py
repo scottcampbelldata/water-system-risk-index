@@ -108,6 +108,8 @@ def _system_to_dict(row: Any) -> dict[str, Any]:
         "areaSqKm": m["area_sqkm"],
         "spatialConfidence": m["spatial_confidence"],
         "spatialLimitationNote": m["spatial_limitation_note"],
+        "sourceProtectionStatus": m["source_protection_status"],
+        "sourceProtectionKinds": m["source_protection_kinds"],
         "geoJoinConfidence": m["geo_join_confidence"],
         "svi": m["svi"],
         "droughtExposure": m["drought_exposure"],
@@ -216,7 +218,8 @@ def summary(
                     COUNT(*) FILTER (WHERE geometry_source_tier = 'verified_service_area_boundary') AS verified_service_areas,
                     COUNT(*) FILTER (WHERE geometry_source_tier = 'modeled_service_area_boundary') AS modeled_service_areas,
                     COUNT(*) FILTER (WHERE geometry_source_tier IN ('validated_system_coordinate', 'city_or_zip_centroid', 'county_centroid')) AS approximate_locations,
-                    COUNT(*) FILTER (WHERE geometry_source_tier = 'unmatched') AS unmatched_geography
+                    COUNT(*) FILTER (WHERE geometry_source_tier = 'unmatched') AS unmatched_geography,
+                    COUNT(*) FILTER (WHERE source_protection_status = 'available') AS source_protection_available
                 FROM water_systems{where}
                 """
             ),
@@ -253,7 +256,7 @@ def summary(
             "modeledServiceAreas": int(metrics["modeled_service_areas"]),
             "approximateLocations": int(metrics["approximate_locations"]),
             "unmatchedGeography": int(metrics["unmatched_geography"]),
-            "sourceProtectionStatus": "not_loaded_phase_1",
+            "sourceProtectionAvailable": int(metrics["source_protection_available"]),
         },
         "tiers": [{"tier": tier, "systems": int(tier_counts.get(tier, 0))} for tier in TIER_ORDER],
         "topCounties": [
@@ -319,7 +322,8 @@ def _geography_evidence(m: Any) -> dict[str, Any]:
         "matchMethod": m["match_method"],
         "areaSqKm": m["area_sqkm"],
         "spatialConfidence": m["spatial_confidence"],
-        "sourceProtectionStatus": "not_evaluated_phase_1",
+        "sourceProtectionStatus": m["source_protection_status"],
+        "sourceProtectionKinds": m["source_protection_kinds"],
         "limitationNote": m["spatial_limitation_note"],
     }
 
@@ -431,4 +435,57 @@ def map_boundaries(
     collection = {"type": "FeatureCollection", "features": features}
     payload_bytes = len(json.dumps(collection, separators=(",", ":")))
     logger.info("map_boundaries: %d features, %.2f MB uncompressed", len(features), payload_bytes / 1_000_000)
+    return collection
+
+
+@app.get("/map/swap")
+def map_swap(
+    q: str | None = None,
+    county: str | None = None,
+    tier: str | None = None,
+    size: str | None = None,
+    geography: str | None = None,
+    kind: str | None = None,
+) -> dict[str, Any]:
+    """GeoJSON FeatureCollection of Ohio EPA source-water protection (SWAP) areas
+    for systems in the current filter. Source-protection areas (where supply is
+    protected) are distinct from service-area boundaries (who receives water).
+    Off by default on the map and loaded on demand; gzip-compressed.
+    """
+    where, params = _filters(q, county, tier, size, geography)
+    kind_clause = ""
+    if kind:
+        kind_clause = " AND a.area_kind = :kind"
+        params = {**params, "kind": kind}
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                f"""
+                SELECT a.pwsid, a.area_kind, a.sys_name, a.area_sqkm, a.geometry
+                FROM water_system_swap_areas a
+                JOIN (SELECT pwsid FROM water_systems{where}) w ON a.pwsid = w.pwsid
+                WHERE TRUE{kind_clause}
+                ORDER BY a.area_kind
+                """
+            ),
+            params,
+        ).mappings().all()
+
+    features = [
+        {
+            "type": "Feature",
+            "properties": {
+                "pwsid": row["pwsid"],
+                "areaKind": row["area_kind"],
+                "name": row["sys_name"],
+                "areaSqKm": row["area_sqkm"],
+            },
+            "geometry": row["geometry"],
+        }
+        for row in rows
+    ]
+    collection = {"type": "FeatureCollection", "features": features}
+    payload_bytes = len(json.dumps(collection, separators=(",", ":")))
+    logger.info("map_swap: %d features, %.2f MB uncompressed", len(features), payload_bytes / 1_000_000)
     return collection
