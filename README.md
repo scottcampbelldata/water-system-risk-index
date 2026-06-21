@@ -123,3 +123,61 @@ python -m pytest -q
 ```
 
 Power BI import files are in `data/powerbi/`.
+
+## Web Application Architecture
+
+The dashboard is deployed as a full-stack app (mirroring the `grid` app):
+
+- **Frontend** — static bundle in [`web/`](web/) on **Cloudflare Pages**
+  (`water-risk.example.com`). It fetches everything from the API; it ships no
+  data file. The previous 27 MB `app_data.json` is gone from `web/` (it was both a
+  Cloudflare 25 MiB/file blocker and a poor upfront-load experience for 16k rows).
+- **Backend** — **FastAPI + Postgres** in [`waterapi/`](waterapi/) on the VPS
+  (`water-api.example.com`), behind nginx + certbot, supervised by systemd.
+  Filtering, sorting and pagination happen server-side, so the browser pulls only
+  what it displays.
+
+Data flow:
+
+```text
+processed CSVs ──(src/export_web_app_data.py)──> data/processed/app_data.json
+                                                          │ (seed)
+                                          (waterapi load) ▼
+                                                      Postgres
+                                                          │
+                                              (FastAPI waterapi.api) 
+                                                          │  HTTP/JSON
+                                                   static web/ frontend
+```
+
+### API endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | health check |
+| `GET /metadata` | metadata block, validation list, county list |
+| `GET /summary` | filter-aware metric + chart aggregates (total, low-spatial, tier counts, top counties) |
+| `GET /tiers` | statewide tier counts |
+| `GET /systems` | filtered / sorted / paginated systems + total count |
+| `GET /systems/{pwsid}` | single system detail |
+| `GET /map/points` | lightweight map markers for the current filter |
+
+Shared filter query params: `q`, `county`, `tier`, `size`, `spatial`.
+`/systems` also accepts `sort`, `order`, `page`, `page_size`.
+
+### Run the backend locally
+
+```powershell
+python -m pip install -r requirements-api.txt
+copy .env.example .env          # then edit PGPASSWORD etc.
+python -m waterapi.cli init-db  # create tables + indexes (idempotent)
+python -m waterapi.cli load     # seed Postgres from data/processed/app_data.json
+python -m waterapi.cli serve    # uvicorn on http://127.0.0.1:8000
+```
+
+Map data (`web/data/ohio_map.json`, `web/data/ohio_counties.geojson`) stays as a
+static asset — both are well under 25 MiB and the live map only needs API marker
+points.
+
+Full database create + seed + deploy steps (systemd, nginx, certbot, Cloudflare
+Pages): see [`docs/deploy.md`](docs/deploy.md).

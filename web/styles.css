@@ -200,6 +200,18 @@ select {
   margin-bottom: 10px;
 }
 
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pager button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .panel-header p {
   margin-bottom: 0;
   color: var(--muted);

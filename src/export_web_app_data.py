@@ -191,7 +191,8 @@ def export_web_app_data() -> Path:
         "validation": quality.to_dict(orient="records"),
     }
 
-    output_path = REPO_ROOT / "web" / "data" / "app_data.json"
+    # Seed source for the Postgres-backed API (no longer a deployed web asset).
+    output_path = REPO_ROOT / "data" / "processed" / "app_data.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(output, separators=(",", ":"), ensure_ascii=True), encoding="utf-8")
     print(f"Wrote {output_path} ({len(systems):,} systems)")
