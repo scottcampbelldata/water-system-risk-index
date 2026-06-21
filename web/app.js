@@ -1,10 +1,18 @@
+const API_BASE = ((window.APP_CONFIG && window.APP_CONFIG.apiBase) || "http://localhost:8000").replace(/\/+$/, "");
+
 const state = {
-  data: null,
-  filtered: [],
+  metadata: null,
+  summary: null,
+  items: [],
+  total: 0,
+  page: 1,
+  pageSize: 100,
+  points: [],
   selected: null,
   map: null,
   markerLayer: null,
-  markerByPwsid: new Map()
+  markerByPwsid: new Map(),
+  loadToken: 0
 };
 
 const colors = {
@@ -48,6 +56,9 @@ const els = {
   map: document.getElementById("streetMap"),
   systemsTable: document.getElementById("systemsTable"),
   tableCount: document.getElementById("tableCount"),
+  prevPage: document.getElementById("prevPage"),
+  nextPage: document.getElementById("nextPage"),
+  pageInfo: document.getElementById("pageInfo"),
   detailSubtitle: document.getElementById("detailSubtitle"),
   systemDetail: document.getElementById("systemDetail")
 };
@@ -69,10 +80,37 @@ function option(label, value = label) {
   return node;
 }
 
-function initFilters(data) {
+async function api(path, params) {
+  const url = new URL(API_BASE + path);
+  if (params) url.search = params.toString();
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Request to ${path} failed (${response.status})`);
+  return response.json();
+}
+
+function filterParams() {
+  const params = new URLSearchParams();
+  const query = els.searchInput.value.trim();
+  if (query) params.set("q", query);
+  if (els.countyFilter.value) params.set("county", els.countyFilter.value);
+  if (els.tierFilter.value) params.set("tier", els.tierFilter.value);
+  if (els.sizeFilter.value) params.set("size", els.sizeFilter.value);
+  if (els.spatialFilter.value) params.set("spatial", els.spatialFilter.value);
+  return params;
+}
+
+function debounce(fn, wait) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+function initFilters(metadata) {
   els.countyFilter.appendChild(option("All counties", ""));
-  data.counties
-    .map(d => d.county)
+  (metadata.counties || [])
+    .slice()
     .sort((a, b) => a.localeCompare(b))
     .forEach(county => els.countyFilter.appendChild(option(county)));
 
@@ -85,8 +123,15 @@ function initFilters(data) {
   els.spatialFilter.appendChild(option("All spatial confidence", ""));
   ["high", "medium", "low", "unknown"].forEach(value => els.spatialFilter.appendChild(option(value)));
 
-  [els.searchInput, els.countyFilter, els.tierFilter, els.sizeFilter, els.spatialFilter, els.showAllMarkers].forEach(el => {
-    el.addEventListener("input", applyFilters);
+  const onFilterChange = () => { state.page = 1; applyFilters({ resetSelection: true }); };
+  els.searchInput.addEventListener("input", debounce(onFilterChange, 250));
+  [els.countyFilter, els.tierFilter, els.sizeFilter, els.spatialFilter].forEach(el => {
+    el.addEventListener("input", onFilterChange);
+  });
+
+  els.showAllMarkers.addEventListener("input", () => {
+    renderMap();
+    fitMapToFiltered();
   });
 
   els.resetFilters.addEventListener("click", () => {
@@ -96,28 +141,43 @@ function initFilters(data) {
     els.sizeFilter.value = "";
     els.spatialFilter.value = "";
     els.showAllMarkers.checked = false;
-    applyFilters();
+    state.page = 1;
+    applyFilters({ resetSelection: true });
+  });
+
+  els.prevPage.addEventListener("click", () => {
+    if (state.page > 1) { state.page -= 1; applyFilters({ resetSelection: false }); }
+  });
+  els.nextPage.addEventListener("click", () => {
+    if (state.page * state.pageSize < state.total) { state.page += 1; applyFilters({ resetSelection: false }); }
   });
 }
 
-function applyFilters() {
-  const query = els.searchInput.value.trim().toLowerCase();
-  const county = els.countyFilter.value;
-  const tier = els.tierFilter.value;
-  const size = els.sizeFilter.value;
-  const spatial = els.spatialFilter.value;
+async function applyFilters({ resetSelection } = { resetSelection: true }) {
+  const token = ++state.loadToken;
+  const base = filterParams();
 
-  state.filtered = state.data.systems.filter(system => {
-    const haystack = `${system.pwsid} ${system.name} ${system.county}`.toLowerCase();
-    return (!query || haystack.includes(query))
-      && (!county || system.county === county)
-      && (!tier || system.tier === tier)
-      && (!size || system.sizeClass === size)
-      && (!spatial || system.spatialConfidence === spatial);
-  });
+  const systemsParams = new URLSearchParams(base);
+  systemsParams.set("sort", "rank");
+  systemsParams.set("order", "asc");
+  systemsParams.set("page", String(state.page));
+  systemsParams.set("page_size", String(state.pageSize));
 
-  if (!state.filtered.includes(state.selected)) {
-    state.selected = state.filtered[0] || null;
+  const [summary, systems, points] = await Promise.all([
+    api("/summary", base),
+    api("/systems", systemsParams),
+    api("/map/points", base)
+  ]);
+
+  if (token !== state.loadToken) return; // a newer request superseded this one
+
+  state.summary = summary;
+  state.items = systems.items;
+  state.total = systems.total;
+  state.points = points;
+
+  if (resetSelection || !state.selected || !state.points.some(p => p.pwsid === state.selected.pwsid)) {
+    state.selected = state.items[0] || null;
   }
 
   render();
@@ -125,12 +185,13 @@ function applyFilters() {
 }
 
 function renderMetrics() {
-  const systems = state.filtered;
-  els.metricTotal.textContent = formatNumber(systems.length);
-  els.metricHigh.textContent = formatNumber(systems.filter(d => d.tier === "High Review").length);
-  els.metricCritical.textContent = formatNumber(systems.filter(d => d.tier === "Critical Review").length);
-  els.metricSpatial.textContent = formatNumber(systems.filter(d => ["low", "unknown"].includes(d.spatialConfidence)).length);
-  els.metricValidation.textContent = `${state.data.metadata.validationPassCount}/${state.data.metadata.validationCheckCount}`;
+  const summary = state.summary;
+  const tierCount = tier => (summary.tiers.find(row => row.tier === tier) || { systems: 0 }).systems;
+  els.metricTotal.textContent = formatNumber(summary.total);
+  els.metricHigh.textContent = formatNumber(tierCount("High Review"));
+  els.metricCritical.textContent = formatNumber(tierCount("Critical Review"));
+  els.metricSpatial.textContent = formatNumber(summary.lowSpatial);
+  els.metricValidation.textContent = `${state.metadata.validationPassCount}/${state.metadata.validationCheckCount}`;
 }
 
 function renderLegend() {
@@ -157,22 +218,18 @@ function renderBarChart(container, rows, valueKey, labelKey, colorFn) {
 function renderCharts() {
   const tierRows = tierOrder.map(tier => ({
     tier,
-    systems: state.filtered.filter(d => d.tier === tier).length
+    systems: (state.summary.tiers.find(row => row.tier === tier) || { systems: 0 }).systems
   }));
   renderBarChart(els.tierChart, tierRows, "systems", "tier", row => colors[row.tier]);
 
-  const byCounty = new Map();
-  state.filtered.forEach(system => {
-    if (!byCounty.has(system.county)) byCounty.set(system.county, { county: system.county, highReviewSystems: 0 });
-    if (["Critical Review", "High Review"].includes(system.tier)) {
-      byCounty.get(system.county).highReviewSystems += 1;
-    }
-  });
-  const countyRows = [...byCounty.values()]
-    .sort((a, b) => b.highReviewSystems - a.highReviewSystems || a.county.localeCompare(b.county))
-    .slice(0, 12)
-    .filter(row => row.highReviewSystems > 0);
-  renderBarChart(els.countyChart, countyRows.length ? countyRows : [{ county: "No high-review systems in filter", highReviewSystems: 0 }], "highReviewSystems", "county", () => "#14746f");
+  const countyRows = state.summary.topCounties;
+  renderBarChart(
+    els.countyChart,
+    countyRows.length ? countyRows : [{ county: "No high-review systems in filter", highReviewSystems: 0 }],
+    "highReviewSystems",
+    "county",
+    () => "#14746f"
+  );
 }
 
 function initializeMap() {
@@ -206,7 +263,7 @@ function mapPopup(system) {
       <p><strong>${system.pwsid}</strong> | ${system.county}</p>
       <p>Score <strong>${formatScore(system.score)}</strong> | ${system.tier}</p>
       <p>Population ${formatNumber(system.population)} | Spatial ${system.spatialConfidence}</p>
-      <p>${system.drivers.slice(0, 2).join(" + ")}</p>
+      <p>${(system.drivers || []).filter(Boolean).slice(0, 2).join(" + ")}</p>
     </div>
   `;
 }
@@ -224,7 +281,7 @@ function markerStyle(system, selected = false) {
 
 function markerSystems() {
   const reviewOnly = els.showAllMarkers.checked;
-  return state.filtered.filter(system => {
+  return state.points.filter(system => {
     if (!Number.isFinite(system.latitude) || !Number.isFinite(system.longitude)) return false;
     if (!reviewOnly) return true;
     return ["Critical Review", "High Review", "Moderate Review"].includes(system.tier);
@@ -241,13 +298,7 @@ function renderMap() {
     const selected = state.selected && state.selected.pwsid === system.pwsid;
     const marker = L.circleMarker([system.latitude, system.longitude], markerStyle(system, selected));
     marker.bindPopup(mapPopup(system));
-    marker.on("click", () => {
-      state.selected = system;
-      renderDetail();
-      renderTable();
-      renderMap();
-      focusSelectedOnMap(false);
-    });
+    marker.on("click", () => selectByPwsid(system.pwsid, false));
     marker.addTo(state.markerLayer);
     state.markerByPwsid.set(system.pwsid, marker);
   });
@@ -280,9 +331,28 @@ function focusSelectedOnMap(zoomToPoint = true) {
   marker.openPopup();
 }
 
+async function selectByPwsid(pwsid, zoom) {
+  let record = state.items.find(system => system.pwsid === pwsid);
+  if (!record) {
+    record = await api(`/systems/${encodeURIComponent(pwsid)}`);
+  }
+  state.selected = record;
+  renderDetail();
+  renderTable();
+  renderMap();
+  focusSelectedOnMap(zoom);
+}
+
 function renderTable() {
-  const rows = state.filtered.slice().sort((a, b) => a.rankStatewide - b.rankStatewide).slice(0, 100);
-  els.tableCount.textContent = `${formatNumber(state.filtered.length)} systems match filters; showing top ${rows.length}`;
+  const rows = state.items;
+  const start = state.total === 0 ? 0 : (state.page - 1) * state.pageSize + 1;
+  const end = Math.min(state.total, state.page * state.pageSize);
+  els.tableCount.textContent = `${formatNumber(state.total)} systems match filters; showing ${formatNumber(start)}-${formatNumber(end)}`;
+
+  els.pageInfo.textContent = state.total === 0 ? "Page 0 of 0" : `Page ${state.page} of ${Math.max(1, Math.ceil(state.total / state.pageSize))}`;
+  els.prevPage.disabled = state.page <= 1;
+  els.nextPage.disabled = state.page * state.pageSize >= state.total;
+
   els.systemsTable.innerHTML = rows.map(system => `
     <tr data-pwsid="${system.pwsid}" class="${state.selected && state.selected.pwsid === system.pwsid ? "selected" : ""}">
       <td>${system.rankStatewide}</td>
@@ -297,13 +367,7 @@ function renderTable() {
   `).join("");
 
   els.systemsTable.querySelectorAll("tr").forEach(row => {
-    row.addEventListener("click", () => {
-      state.selected = state.filtered.find(system => system.pwsid === row.dataset.pwsid);
-      renderDetail();
-      renderTable();
-      renderMap();
-      focusSelectedOnMap(true);
-    });
+    row.addEventListener("click", () => selectByPwsid(row.dataset.pwsid, true));
   });
 }
 
@@ -359,21 +423,16 @@ function render() {
 }
 
 async function loadApp() {
-  const response = await fetch("data/app_data.json?v=street-map-1");
-  if (!response.ok) throw new Error("Unable to load app_data.json");
-  state.data = await response.json();
-  state.filtered = state.data.systems;
-  state.selected = state.data.systems.slice().sort((a, b) => a.rankStatewide - b.rankStatewide)[0];
+  state.metadata = await api("/metadata");
+  els.useNotice.textContent = state.metadata.useNote;
+  els.sourceNote.textContent = state.metadata.sourceNote;
 
-  els.useNotice.textContent = state.data.metadata.useNote;
-  els.sourceNote.textContent = state.data.metadata.sourceNote;
-
-  initFilters(state.data);
+  initFilters(state.metadata);
   initializeMap();
-  render();
+  await applyFilters({ resetSelection: true });
   fitMapToOhio();
 }
 
 loadApp().catch(error => {
-  document.body.innerHTML = `<main class="app-shell"><div class="notice">The app could not load its data file. ${error.message}</div></main>`;
+  document.body.innerHTML = `<main class="app-shell"><div class="notice">The app could not reach its data API. ${error.message}</div></main>`;
 });
