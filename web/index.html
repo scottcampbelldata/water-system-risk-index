@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Water System Risk & Funding Priority Index</title>
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Ohio prototype</p>
+        <h1>Water System Risk & Funding Priority Index</h1>
+      </div>
+      <div class="header-actions">
+        <button class="ghost-button" id="resetFilters" type="button">Reset filters</button>
+        <a class="primary-link" href="data/app_data.json" download>Download app data</a>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="summary-grid" aria-label="Executive summary">
+        <div class="metric">
+          <span>Total systems</span>
+          <strong id="metricTotal">--</strong>
+        </div>
+        <div class="metric">
+          <span>High review</span>
+          <strong id="metricHigh">--</strong>
+        </div>
+        <div class="metric">
+          <span>Critical review</span>
+          <strong id="metricCritical">--</strong>
+        </div>
+        <div class="metric">
+          <span>Low spatial confidence</span>
+          <strong id="metricSpatial">--</strong>
+        </div>
+        <div class="metric">
+          <span>Validation checks passed</span>
+          <strong id="metricValidation">--</strong>
+        </div>
+      </section>
+
+      <section class="notice" id="useNotice"></section>
+
+      <section class="filters" aria-label="Dashboard filters">
+        <label>
+          Search
+          <input id="searchInput" type="search" placeholder="PWSID, system name, county">
+        </label>
+        <label>
+          County
+          <select id="countyFilter"></select>
+        </label>
+        <label>
+          Risk tier
+          <select id="tierFilter"></select>
+        </label>
+        <label>
+          System size
+          <select id="sizeFilter"></select>
+        </label>
+        <label>
+          Spatial confidence
+          <select id="spatialFilter"></select>
+        </label>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="panel map-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Statewide Screening Map</h2>
+              <p id="mapSubtitle">Zoomable street map with public water systems plotted by best available coordinates.</p>
+            </div>
+            <div class="map-tools">
+              <label class="toggle-label">
+                <input id="showAllMarkers" type="checkbox">
+                Show review-priority only
+              </label>
+              <div class="legend" id="tierLegend"></div>
+            </div>
+          </div>
+          <div id="streetMap" aria-label="Ohio systems street map"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Risk Tiers</h2>
+              <p>Current filtered system count by review tier.</p>
+            </div>
+          </div>
+          <div class="chart" id="tierChart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Top Counties</h2>
+              <p>Counties with the most high-review systems.</p>
+            </div>
+          </div>
+          <div class="chart" id="countyChart"></div>
+        </div>
+
+        <div class="panel detail-panel">
+          <div class="panel-header">
+            <div>
+              <h2>System Detail</h2>
+              <p id="detailSubtitle">Select a system from the table or map.</p>
+            </div>
+          </div>
+          <div id="systemDetail" class="system-detail"></div>
+        </div>
+      </section>
+
+      <section class="table-section">
+        <div class="panel-header">
+          <div>
+            <h2>Ranked Review List</h2>
+            <p id="tableCount">-- systems shown</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>PWSID</th>
+                <th>System</th>
+                <th>County</th>
+                <th>Score</th>
+                <th>Tier</th>
+                <th>Top driver</th>
+                <th>Spatial</th>
+              </tr>
+            </thead>
+            <tbody id="systemsTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="methodology-grid">
+        <div>
+          <h2>Methodology</h2>
+          <p>The index combines compliance, enforcement, vulnerability, drought, possible funding gap, small-system context, and data quality into a 0-100 review-priority score.</p>
+          <ul>
+            <li>Compliance: 30%</li>
+            <li>Enforcement: 15%</li>
+            <li>Vulnerability: 20%</li>
+            <li>Drought: 10%</li>
+            <li>Funding gap: 15%</li>
+            <li>Small-system context: 10%</li>
+            <li>Data quality penalty: -5%</li>
+          </ul>
+        </div>
+        <div>
+          <h2>Limitations</h2>
+          <p>Unmatched funding records do not prove that a system received no funding. Low-confidence geography uses county centroid fallback and should be treated as screening context only.</p>
+          <p id="sourceNote"></p>
+        </div>
+      </section>
+    </main>
+
+    <div class="tooltip" id="tooltip" hidden></div>
+    <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="app.js?v=ohio-bounds-1"></script>
+  </body>
+</html>

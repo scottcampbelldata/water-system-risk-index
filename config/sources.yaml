@@ -1,0 +1,197 @@
+project:
+  name: Water System Risk & Funding Priority Index
+  prototype_state: OH
+  created_for: Public-data analytics portfolio project
+  source_inventory_output: data/interim/source_inventory.csv
+  manifest_output: data/raw/data_source_manifest.csv
+
+folders:
+  - data/raw
+  - data/raw/echo_sdwis
+  - data/raw/service_areas
+  - data/raw/srf
+  - data/raw/svi
+  - data/raw/tiger
+  - data/raw/drought
+  - data/interim
+  - data/processed
+  - data/powerbi
+  - outputs/charts
+  - outputs/sample_maps
+  - outputs/screenshots
+
+sources:
+  - source_name: epa_echo_sdwis
+    display_name: EPA ECHO SDWA National Dataset
+    agency: U.S. Environmental Protection Agency
+    dataset_description: National Safe Drinking Water Act data compiled from SDWIS in ECHO, including public water systems, facilities, geographic areas, service areas, site visits, violations, and enforcement.
+    landing_page_url: https://echo.epa.gov/tools/data-downloads
+    documentation_url: https://echo.epa.gov/tools/data-downloads/sdwa-download-summary
+    direct_download_url: https://echo.epa.gov/files/echodownloads/SDWA_latest_downloads.zip
+    ingestion_method: direct_download
+    size_class: large
+    grain: Quarterly snapshot by PWSID and related event/facility records
+    geographic_level: Public water system with state/county/city/service area attributes where reported
+    refresh_frequency: Quarterly
+    key_fields:
+      - SUBMISSIONYEARQUARTER
+      - PWSID
+      - VIOLATION_ID
+      - ENFORCEMENT_ID
+      - FACILITY_ID
+    sdwis_files_needed:
+      - SDWA_PUB_WATER_SYSTEMS.csv
+      - SDWA_VIOLATIONS_ENFORCEMENT.csv
+      - SDWA_SITE_VISITS.csv
+      - SDWA_FACILITIES.csv
+      - SDWA_GEOGRAPHIC_AREAS.csv
+      - SDWA_SERVICE_AREAS.csv
+      - SDWA_REF_CODE_VALUES.csv
+    known_limitations: National zip is large; quarterly snapshots require latest-record filtering; ECHO data are not real time and may lag state records.
+    local_raw_path: data/raw/echo_sdwis/SDWA_latest_downloads.zip
+    processed_output_path: data/interim/echo_sdwis_ohio/
+    overwrite_default: false
+    notes: Download only when ready to slice Ohio records from the national package.
+
+  - source_name: epa_pws_service_areas
+    display_name: EPA Public Water System Service Areas
+    agency: U.S. Environmental Protection Agency
+    dataset_description: Public water system service area boundaries from authoritative and modeled sources, used when available for spatial joins and service-area confidence.
+    landing_page_url: https://www.epa.gov/ground-water-and-drinking-water/public-water-system-service-areas
+    documentation_url: https://www.epa.gov/ground-water-and-drinking-water/public-water-system-service-areas
+    direct_download_url: "https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/Water_System_Boundaries/FeatureServer/0/query?f=geojson&where=PWSID%20LIKE%20%27OH%25%27&outFields=*&returnGeometry=true&outSR=4326"
+    ingestion_method: direct_download
+    size_class: medium
+    grain: Service area geometry by PWSID where available
+    geographic_level: Public water system service area polygon
+    refresh_frequency: Periodic EPA release
+    key_fields:
+      - PWSID
+    known_limitations: Includes both authoritative and modeled boundaries; some systems may be missing or have uncertain modeled boundaries.
+    local_raw_path: data/raw/service_areas/epa_pws_service_areas_ohio.geojson
+    processed_output_path: data/interim/service_areas_ohio.parquet
+    overwrite_default: false
+    notes: Ohio-only GeoJSON query from EPA ArcGIS REST FeatureServer layer 0.
+
+  - source_name: epa_srf_public_portal
+    display_name: EPA SRF Public Portal Project Exports
+    agency: U.S. Environmental Protection Agency
+    dataset_description: Drinking Water and Clean Water SRF public portal project-specific data and annual summaries.
+    landing_page_url: https://sdwis.epa.gov/ords/sfdw_pub/r/sfdw/owsrf_public/home
+    documentation_url: https://sdwis.epa.gov/ords/sfdw_pub/r/sfdw/owsrf_public/reports
+    direct_download_url:
+    ingestion_method: manual
+    size_class: small
+    grain: SRF project or assistance agreement recipient record
+    geographic_level: Recipient, community, state, and project location fields where available
+    refresh_frequency: Annual and portal-dependent
+    key_fields:
+      - recipient_name
+      - state
+      - project_year
+      - assistance_amount
+    known_limitations: PWSID may be absent; matching to systems may require name/county fuzzy matching and should not be overclaimed.
+    local_raw_path: data/raw/srf/epa_srf_public_portal_ohio_projects.csv
+    processed_output_path: data/interim/srf_ohio_projects.parquet
+    overwrite_default: false
+    notes: Export Ohio DWSRF project-level data from the portal once report columns are selected.
+
+  - source_name: cdc_atsdr_svi_2022_county
+    display_name: CDC/ATSDR Social Vulnerability Index 2022 County
+    agency: CDC/ATSDR
+    dataset_description: County-level social vulnerability percentile rankings and theme rankings.
+    landing_page_url: https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html
+    documentation_url: https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html
+    direct_download_url: https://s3-west.nrp-nautilus.io/public-social-vulnerability/2022/SVI2022_US_county.parquet
+    ingestion_method: direct_download
+    size_class: small
+    grain: County
+    geographic_level: County FIPS
+    refresh_frequency: Periodic ACS-based release
+    key_fields:
+      - FIPS
+      - ST
+      - COUNTY
+      - RPL_THEMES
+      - RPL_THEME1
+      - RPL_THEME2
+      - RPL_THEME3
+      - RPL_THEME4
+    known_limitations: Percentile rankings are relative to the release geography and year; do not compare percentiles across SVI vintages without care.
+    local_raw_path: data/raw/svi/SVI2022_US_county.parquet
+    processed_output_path: data/interim/svi_2022_ohio_county.parquet
+    overwrite_default: false
+    notes: Downloaded from Source Cooperative mirror of CDC/ATSDR SVI; CDC/ATSDR documentation remains the source methodology reference.
+
+  - source_name: census_tiger_counties
+    display_name: Census TIGER/Line 2025 Counties
+    agency: U.S. Census Bureau
+    dataset_description: National county boundaries used for Ohio county filtering, centroids, and county-level joins.
+    landing_page_url: https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    documentation_url: https://www.census.gov/programs-surveys/geography/technical-documentation/complete-technical-documentation/tiger-geo-line.html
+    direct_download_url: https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/tl_2025_us_county.zip
+    ingestion_method: direct_download
+    size_class: medium
+    grain: County polygon
+    geographic_level: County FIPS
+    refresh_frequency: Annual
+    key_fields:
+      - GEOID
+      - STATEFP
+      - COUNTYFP
+      - NAME
+    known_limitations: National county file is broader than Ohio; spatial joins should filter `STATEFP = 39` for the prototype.
+    local_raw_path: data/raw/tiger/tl_2025_us_county.zip
+    processed_output_path: data/interim/tiger_ohio_counties.parquet
+    overwrite_default: false
+    notes: Medium-sized but manageable; useful early for county joins.
+
+  - source_name: census_tiger_tracts_ohio
+    display_name: Census TIGER/Line 2025 Ohio Tracts
+    agency: U.S. Census Bureau
+    dataset_description: Ohio census tract boundaries for tract-level SVI/service-area joins.
+    landing_page_url: https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+    documentation_url: https://www.census.gov/programs-surveys/geography/technical-documentation/complete-technical-documentation/tiger-geo-line.html
+    direct_download_url: https://www2.census.gov/geo/tiger/TIGER2025/TRACT/tl_2025_39_tract.zip
+    ingestion_method: direct_download
+    size_class: small
+    grain: Census tract polygon
+    geographic_level: Tract GEOID
+    refresh_frequency: Annual
+    key_fields:
+      - GEOID
+      - STATEFP
+      - COUNTYFP
+      - TRACTCE
+    known_limitations: Tract boundary vintages must match or be reconciled with SVI vintage.
+    local_raw_path: data/raw/tiger/tl_2025_39_tract.zip
+    processed_output_path: data/interim/tiger_ohio_tracts.parquet
+    overwrite_default: false
+    notes: Consider using TIGER 2022 tracts when joining directly to 2022 SVI tract data.
+
+  - source_name: us_drought_monitor_ohio_county_52w
+    display_name: U.S. Drought Monitor Ohio County Statistics 52 Weeks
+    agency: National Drought Mitigation Center, USDA, NOAA
+    dataset_description: Weekly county drought severity area percentages for Ohio counties over the last 52 weeks.
+    landing_page_url: https://droughtmonitor.unl.edu/Data.aspx
+    documentation_url: https://droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx
+    direct_download_url: https://usdmdataservices.unl.edu/api/CountyStatistics/GetDroughtSeverityStatisticsByAreaPercent?aoi=OH&startdate={start_date_mdy}&enddate={end_date_mdy}&statisticsType=1
+    ingestion_method: parameterized_download
+    size_class: small
+    grain: County by weekly drought monitor date
+    geographic_level: County FIPS
+    refresh_frequency: Weekly
+    key_fields:
+      - MapDate
+      - FIPS
+      - None
+      - D0
+      - D1
+      - D2
+      - D3
+      - D4
+    known_limitations: County exposure is a fallback for water systems without service-area intersections; drought is not a direct drinking water quality indicator.
+    local_raw_path: data/raw/drought/usdm_ohio_county_52w.csv
+    processed_output_path: data/interim/usdm_ohio_county_52w.parquet
+    overwrite_default: false
+    notes: URL dates are filled at runtime using the configured lookback window.

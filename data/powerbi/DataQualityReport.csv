@@ -1,0 +1,14 @@
+check_name,status,severity,rows_affected,notes
+no_duplicate_pwsid_in_master,pass,critical,0,One row per PWSID is required.
+master_required_columns_present,pass,critical,0,Missing columns: 
+risk_score_between_0_and_100,pass,critical,0,Scores must be bounded.
+valid_risk_tiers_only,pass,critical,0,Risk tier names must match dashboard dictionary.
+population_served_not_negative,pass,critical,0,Population served cannot be negative.
+component_scores_between_0_and_100,pass,critical,0,Every normalized component must be within 0-100.
+spatial_confidence_valid_not_null,pass,high,0,Spatial confidence is required.
+funding_match_confidence_valid_not_null,pass,high,0,Funding match confidence is required.
+row_counts_by_stage,pass,high,0,"master=16339, geography=16339, funding=16339, risk=16339"
+percent_missing_pws_name,pass,medium,1,0.0% missing.
+percent_missing_county,pass,medium,192,1.2% missing.
+percent_missing_population_served,pass,medium,0,0.0% missing.
+top_20_systems_reviewed_for_obvious_errors,pass,medium,0,Top ranked rows have PWSID and explanation text.

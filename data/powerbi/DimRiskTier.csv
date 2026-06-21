@@ -1,0 +1,6 @@
+risk_tier,sort_order,minimum_score
+Critical Review,1,80
+High Review,2,65
+Moderate Review,3,45
+Monitor,4,25
+Lower Priority,5,0

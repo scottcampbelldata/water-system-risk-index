@@ -1,0 +1,82 @@
+model:
+  name: Water System Risk & Funding Priority Index
+  version: "0.1.0"
+  prototype_state: OH
+  score_scale:
+    minimum: 0
+    maximum: 100
+  score_date_policy: Use pipeline run date until a formal refresh calendar is implemented.
+
+system_size_thresholds:
+  very_small_population_max: 500
+  small_population_max: 3300
+  medium_population_max: 10000
+  note: Analytical portfolio thresholds for screening. They should be reviewed against EPA/state definitions before production use.
+
+overall_weights:
+  compliance_risk_component: 0.30
+  enforcement_risk_component: 0.15
+  vulnerability_component: 0.20
+  drought_component: 0.10
+  funding_gap_component: 0.15
+  small_system_component: 0.10
+  data_quality_penalty: -0.05
+
+risk_tiers:
+  - tier: Critical Review
+    minimum_score: 80
+    maximum_score: 100
+  - tier: High Review
+    minimum_score: 65
+    maximum_score: 79.999
+  - tier: Moderate Review
+    minimum_score: 45
+    maximum_score: 64.999
+  - tier: Monitor
+    minimum_score: 25
+    maximum_score: 44.999
+  - tier: Lower Priority
+    minimum_score: 0
+    maximum_score: 24.999
+
+violation_severity_mapping:
+  health_based_open: 100
+  health_based_resolved_recent: 75
+  health_based_resolved_old: 45
+  treatment_technique: 85
+  maximum_contaminant_level: 90
+  maximum_residual_disinfectant_level: 85
+  monitoring_reporting_major: 55
+  monitoring_reporting_minor: 30
+  reporting_only: 25
+  other: 20
+  archived: 10
+  assumption: Health-based and unresolved violations carry more weight than monitoring/reporting or older resolved violations.
+
+enforcement_severity_mapping:
+  formal: 80
+  informal: 40
+  resolving: 15
+  penalty: 90
+  recent_action_bonus: 15
+
+funding_match_confidence_order:
+  - exact_pwsid_match
+  - exact_name_county_match
+  - fuzzy_name_county_match
+  - county_only_match
+  - unmatched
+
+spatial_confidence_order:
+  - high
+  - medium
+  - low
+  - unknown
+
+data_quality_penalties:
+  missing_population_served: 15
+  missing_county: 10
+  missing_or_unknown_geography: 20
+  low_spatial_confidence: 10
+  unmatched_funding_record: 5
+  duplicate_source_records_needing_resolution: 20
