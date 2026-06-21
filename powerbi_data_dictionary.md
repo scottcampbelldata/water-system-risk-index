@@ -23,7 +23,6 @@
 | DimWaterSystem | county | Text | Reported county or county list. | SDWA geographic areas; may be blank. |
 | DimWaterSystem | population_served | Number | Reported population served. | SDWA `POPULATION_SERVED_COUNT`. |
 | DimWaterSystem | system_size_class | Text | Analytical size class. | Configured thresholds in `scoring_weights.yaml`. |
-| DimWaterSystem | spatial_confidence | Text | Confidence in mapped location. | EPA service-area match or county fallback logic. |
 | FactViolationsSummary | total_violations_36m | Whole number | Violation count in the last 36 months. | Deduplicated SDWA violations. |
 | FactViolationsSummary | health_based_violations_36m | Whole number | Recent health-based violation count. | SDWA `IS_HEALTH_BASED_IND = Y`. |
 | FactViolationsSummary | open_violation_flag | Boolean | Whether recent records include addressed/unaddressed open status. | SDWA violation status. |
@@ -35,6 +34,10 @@
 | FactFundingSummary | funding_gap_flag | Text | Funding review indicator. | Does not prove lack of funding. |
 | DimGeography | latitude | Number | Best available latitude. | EPA service-area centroid or county centroid fallback. |
 | DimGeography | longitude | Number | Best available longitude. | EPA service-area centroid or county centroid fallback. |
+| DimGeography | geometry_source_tier | Text | Geometry source tier: verified_service_area_boundary, modeled_service_area_boundary, validated_system_coordinate, city_or_zip_centroid, county_centroid, unmatched. | EPA `Symbology_Field` classification + centroid fallback. |
+| DimGeography | boundary_type | Text | Service-area boundary lineage: system_sourced or modeled. | EPA `Symbology_Field`. |
+| DimGeography | area_sqkm | Number | Service-area polygon area. | EPA polygon in EPSG:5070. |
+| DimGeography | spatial_confidence | Text | Confidence in mapped location (very_high to unknown). | Derived from geometry_source_tier. |
 | DimGeography | geo_join_confidence | Text | Join confidence for geography-derived features. | Service-area or county fallback. |
 | DimGeography | overall_svi_percentile | Number | County SVI overall percentile. | CDC/ATSDR SVI 2022 county data. |
 | DimGeography | drought_component | Number | Normalized recent drought component. | U.S. Drought Monitor county statistics. |

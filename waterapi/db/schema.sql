@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS water_systems (
     latitude                      double precision,
     longitude                     double precision,
     spatial_confidence            text,
+    geometry_source_tier          text,
+    boundary_type                 text,
+    boundary_provider             text,
+    match_method                  text,
+    area_sqkm                     double precision,
+    spatial_limitation_note       text,
     geo_join_confidence           text,
     svi                           double precision,
     drought_exposure              double precision,
@@ -62,6 +68,18 @@ CREATE TABLE IF NOT EXISTS app_metadata (
     data jsonb NOT NULL,
     CONSTRAINT app_metadata_singleton CHECK (id = 1)
 );
+
+-- Simplified service-area boundary geometry (GeoJSON in jsonb; no PostGIS in Phase 1).
+-- PostGIS is a documented future enhancement for national-scale spatial queries.
+CREATE TABLE IF NOT EXISTS water_system_boundaries (
+    pwsid             text PRIMARY KEY REFERENCES water_systems(pwsid),
+    boundary_type     text,
+    boundary_provider text,
+    match_method      text,
+    area_sqkm         double precision,
+    geometry          jsonb NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_boundaries_type ON water_system_boundaries (boundary_type);
 
 -- The data-quality / validation check results.
 CREATE TABLE IF NOT EXISTS validation_checks (

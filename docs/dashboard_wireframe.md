@@ -4,7 +4,7 @@ Dashboard build is intentionally deferred until the data model is validated.
 
 ## Page 1: Executive Summary
 
-- Total systems
+- Total records (Ohio public water system records)
 - High Review systems
 - Critical Review systems
 - Population served by High/Critical Review systems
