@@ -37,7 +37,8 @@ SYSTEM_INSERT = text(
         pwsid, name, county, population, size_class, owner_type, water_source,
         activity_status, service_connections, score, tier, rank_statewide, rank_county,
         driver_1, driver_2, driver_3, explanation, latitude, longitude,
-        spatial_confidence, geo_join_confidence, svi, drought_exposure,
+        spatial_confidence, geometry_source_tier, boundary_type, boundary_provider,
+        match_method, area_sqkm, spatial_limitation_note, geo_join_confidence, svi, drought_exposure,
         severe_drought_weeks, violations_36m, health_violations_36m, open_violation,
         violation_trend, enforcement_36m, formal_actions_60m, recent_enforcement,
         funding_gap_flag, funding_match_confidence, funding_notes, data_quality_flags,
@@ -48,7 +49,8 @@ SYSTEM_INSERT = text(
         :pwsid, :name, :county, :population, :size_class, :owner_type, :water_source,
         :activity_status, :service_connections, :score, :tier, :rank_statewide, :rank_county,
         :driver_1, :driver_2, :driver_3, :explanation, :latitude, :longitude,
-        :spatial_confidence, :geo_join_confidence, :svi, :drought_exposure,
+        :spatial_confidence, :geometry_source_tier, :boundary_type, :boundary_provider,
+        :match_method, :area_sqkm, :spatial_limitation_note, :geo_join_confidence, :svi, :drought_exposure,
         :severe_drought_weeks, :violations_36m, :health_violations_36m, :open_violation,
         :violation_trend, :enforcement_36m, :formal_actions_60m, :recent_enforcement,
         :funding_gap_flag, :funding_match_confidence, :funding_notes, :data_quality_flags,
@@ -67,6 +69,13 @@ VALIDATION_INSERT = text(
 )
 
 METADATA_INSERT = text("INSERT INTO app_metadata (id, data) VALUES (1, :data)")
+
+BOUNDARY_INSERT = text(
+    """
+    INSERT INTO water_system_boundaries (pwsid, boundary_type, boundary_provider, match_method, area_sqkm, geometry)
+    VALUES (:pwsid, :boundary_type, :boundary_provider, :match_method, :area_sqkm, CAST(:geometry AS jsonb))
+    """
+)
 
 
 def _system_row(system: dict) -> dict:
@@ -94,6 +103,12 @@ def _system_row(system: dict) -> dict:
         "latitude": system.get("latitude"),
         "longitude": system.get("longitude"),
         "spatial_confidence": system.get("spatialConfidence"),
+        "geometry_source_tier": system.get("geometrySourceTier"),
+        "boundary_type": system.get("boundaryType"),
+        "boundary_provider": system.get("boundaryProvider"),
+        "match_method": system.get("matchMethod"),
+        "area_sqkm": system.get("areaSqKm"),
+        "spatial_limitation_note": system.get("spatialLimitationNote"),
         "geo_join_confidence": system.get("geoJoinConfidence"),
         "svi": system.get("svi"),
         "drought_exposure": system.get("droughtExposure"),
@@ -128,6 +143,22 @@ def load(seed_path: Path | None = None) -> int:
     metadata = payload.get("metadata", {})
     validation = payload.get("validation", [])
 
+    boundaries_path = path.parent / "boundaries.json"
+    boundary_rows = []
+    if boundaries_path.exists():
+        boundaries = json.loads(boundaries_path.read_text(encoding="utf-8"))
+        boundary_rows = [
+            {
+                "pwsid": pwsid,
+                "boundary_type": entry.get("boundaryType"),
+                "boundary_provider": entry.get("boundaryProvider"),
+                "match_method": entry.get("matchMethod"),
+                "area_sqkm": entry.get("areaSqKm"),
+                "geometry": json.dumps(entry.get("geometry"), separators=(",", ":")),
+            }
+            for pwsid, entry in boundaries.items()
+        ]
+
     system_rows = [_system_row(system) for system in systems]
     validation_rows = [
         {
@@ -142,14 +173,19 @@ def load(seed_path: Path | None = None) -> int:
 
     engine = get_engine()
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE water_systems, app_metadata, validation_checks"))
+        conn.execute(text("TRUNCATE water_system_boundaries, water_systems, app_metadata, validation_checks"))
         if system_rows:
             conn.execute(SYSTEM_INSERT, system_rows)
+        if boundary_rows:
+            conn.execute(BOUNDARY_INSERT, boundary_rows)
         conn.execute(METADATA_INSERT, {"data": json.dumps(metadata)})
         if validation_rows:
             conn.execute(VALIDATION_INSERT, validation_rows)
 
-    print(f"Loaded {len(system_rows):,} systems, {len(validation_rows)} validation checks from {path}")
+    print(
+        f"Loaded {len(system_rows):,} systems, {len(boundary_rows):,} boundaries, "
+        f"{len(validation_rows)} validation checks from {path}"
+    )
     return len(system_rows)
 
 

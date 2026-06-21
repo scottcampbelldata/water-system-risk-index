@@ -63,7 +63,7 @@ def data_quality_penalty(row: pd.Series) -> float:
         penalty += 15
     if "missing_county" in flags:
         penalty += 10
-    if row.get("spatial_confidence") == "low":
+    if row.get("spatial_confidence") == "very_low":
         penalty += 10
     if row.get("spatial_confidence") == "unknown":
         penalty += 20
@@ -88,7 +88,7 @@ def top_drivers(row: pd.Series) -> list[str]:
 
 def explanation_text(row: pd.Series) -> str:
     drivers = [row["top_risk_driver_1"], row["top_risk_driver_2"], row["top_risk_driver_3"]]
-    spatial_note = f"Spatial confidence is {row['spatial_confidence']} because {row.get('spatial_limitation_note', 'the best available geography was used')}"
+    spatial_note = f"Spatial confidence is {str(row['spatial_confidence']).replace('_', ' ')} because {row.get('spatial_limitation_note', 'the best available geography was used')}"
     funding_note = (
         "Funding records were not overclaimed; unmatched SRF data means no recent project was matched in the staged source, not proof that funding never occurred."
         if row.get("funding_match_confidence") == "unmatched"
@@ -116,6 +116,7 @@ def score_risk() -> pd.DataFrame:
             geography[
                 [
                     "pwsid",
+                    "spatial_confidence",
                     "spatial_limitation_note",
                     "geo_join_confidence",
                     "vulnerability_component",

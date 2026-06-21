@@ -33,12 +33,31 @@
           <strong id="metricCritical">--</strong>
         </div>
         <div class="metric">
-          <span>Low spatial confidence</span>
-          <strong id="metricSpatial">--</strong>
-        </div>
-        <div class="metric">
           <span>Validation checks passed</span>
           <strong id="metricValidation">--</strong>
+        </div>
+      </section>
+
+      <section class="geography-grid" aria-label="Geography coverage">
+        <div class="metric">
+          <span>System-sourced service areas</span>
+          <strong id="geoVerified">--</strong>
+        </div>
+        <div class="metric">
+          <span>Modeled service areas</span>
+          <strong id="geoModeled">--</strong>
+        </div>
+        <div class="metric">
+          <span>Approximate locations</span>
+          <strong id="geoApproximate">--</strong>
+        </div>
+        <div class="metric">
+          <span>Unmatched geography</span>
+          <strong id="geoUnmatched">--</strong>
+        </div>
+        <div class="metric">
+          <span>Source protection overlay</span>
+          <strong id="geoSourceProtection" class="metric-status">--</strong>
         </div>
       </section>
 
@@ -62,8 +81,8 @@
           <select id="sizeFilter"></select>
         </label>
         <label>
-          Spatial confidence
-          <select id="spatialFilter"></select>
+          Geography
+          <select id="geographyFilter"></select>
         </label>
       </section>
 
@@ -172,6 +191,6 @@
     <div class="tooltip" id="tooltip" hidden></div>
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=api-1"></script>
+    <script src="app.js?v=geo-1"></script>
   </body>
 </html>

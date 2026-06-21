@@ -105,9 +105,10 @@ Ohio MVP complete.
 Current run produced:
 
 - 16,339 Ohio public water system records scored
+- 1,077 EPA service-area boundary polygons preserved and mapped (207 system-sourced, 870 modeled)
 - 7 processed analytical outputs
 - 9 Power BI-ready CSV exports
-- 13 validation checks, all passing
+- 19 validation checks, all passing (expanded from 13 to cover geometry source, dissolve, and simplification quality)
 - Portfolio charts in `outputs/charts/`
 
 Run the complete pipeline:
@@ -156,14 +157,46 @@ processed CSVs ──(src/export_web_app_data.py)──> data/processed/app_data
 |----------|---------|
 | `GET /health` | health check |
 | `GET /metadata` | metadata block, validation list, county list |
-| `GET /summary` | filter-aware metric + chart aggregates (total, low-spatial, tier counts, top counties) |
+| `GET /summary` | filter-aware metric + chart aggregates (total, geography breakdown, tier counts, top counties) |
 | `GET /tiers` | statewide tier counts |
+| `GET /map/boundaries` | gzip GeoJSON FeatureCollection of simplified service-area polygons for the filtered set |
 | `GET /systems` | filtered / sorted / paginated systems + total count |
 | `GET /systems/{pwsid}` | single system detail |
 | `GET /map/points` | lightweight map markers for the current filter |
 
-Shared filter query params: `q`, `county`, `tier`, `size`, `spatial`.
+Shared filter query params: `q`, `county`, `tier`, `size`, `geography`.
 `/systems` also accepts `sort`, `order`, `page`, `page_size`.
+
+### Geography & service-area boundaries
+
+The map renders real **EPA Public Water System service-area polygons** where
+available, not just centroids. The pipeline preserves the original geometry in an
+audit artifact and stores a topology-simplified copy (5 m tolerance, area-delta
+validated) as GeoJSON in Postgres (`water_system_boundaries`, `jsonb`). PostGIS is
+intentionally not required for Phase 1 and is documented as a future national-scale
+enhancement.
+
+Each record is assigned a geometry-source tier (most to least precise):
+
+| Tier (stored) | User-facing label | Confidence |
+|---------------|-------------------|------------|
+| `verified_service_area_boundary` | System-Sourced Service Area | very_high |
+| `modeled_service_area_boundary` | Modeled Service Area | medium_high |
+| `validated_system_coordinate` | Approximate Location | medium |
+| `city_or_zip_centroid` | Approximate Location | low |
+| `county_centroid` | Approximate Location | very_low |
+| `unmatched` | Unmatched Geography | unknown |
+
+Modeled EPA polygons are deliberately **not** labeled "verified." Service-area
+boundaries (who may receive water) are kept semantically separate from
+source-water protection areas (where supply is protected); the latter is a planned
+**Phase 2** overlay and is not loaded yet. Facility points (wells/intakes/treatment
+plants) are deferred because no public Ohio source publishes usable coordinates.
+
+The frontend exposes map layer controls (records, service-area boundaries, county
+boundaries) and a per-system **geography evidence** panel (primary geometry,
+boundary type, provider, PWSID match, area, confidence, source-protection status,
+limitation note).
 
 ### Run the backend locally
 

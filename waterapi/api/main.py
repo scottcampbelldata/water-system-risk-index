@@ -9,15 +9,24 @@ from __future__ import annotations
 
 from typing import Any
 
+import json
+import logging
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
 from waterapi import __version__
 from waterapi.config import settings
 from waterapi.db.engine import get_engine
 
+logger = logging.getLogger("waterapi")
+
 app = FastAPI(title="Water System Risk Index API", version=__version__)
+
+# Compress responses (notably the /map/boundaries GeoJSON FeatureCollection).
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # Explicit production origin(s) from settings, plus any localhost/127.0.0.1 port
 # for local development (regex).
@@ -31,6 +40,24 @@ app.add_middleware(
 
 TIER_ORDER = ["Critical Review", "High Review", "Moderate Review", "Monitor", "Lower Priority"]
 HIGH_TIERS = ("Critical Review", "High Review")
+
+# Geography filter buckets -> geometry_source_tier values.
+GEOGRAPHY_BUCKETS = {
+    "verified": ["verified_service_area_boundary"],
+    "modeled": ["modeled_service_area_boundary"],
+    "approximate": ["validated_system_coordinate", "city_or_zip_centroid", "county_centroid"],
+    "unmatched": ["unmatched"],
+}
+MATCHED_TIERS = ("verified_service_area_boundary", "modeled_service_area_boundary")
+
+GEOMETRY_LABELS = {
+    "verified_service_area_boundary": "System-Sourced Service Area",
+    "modeled_service_area_boundary": "Modeled Service Area",
+    "validated_system_coordinate": "Approximate Location",
+    "city_or_zip_centroid": "Approximate Location",
+    "county_centroid": "Approximate Location",
+    "unmatched": "Unmatched Geography",
+}
 
 # Sort keys exposed to the API mapped to physical columns.
 SORT_COLUMNS = {
@@ -74,7 +101,13 @@ def _system_to_dict(row: Any) -> dict[str, Any]:
         "explanation": m["explanation"],
         "latitude": m["latitude"],
         "longitude": m["longitude"],
+        "geometrySourceTier": m["geometry_source_tier"],
+        "boundaryType": m["boundary_type"],
+        "boundaryProvider": m["boundary_provider"],
+        "matchMethod": m["match_method"],
+        "areaSqKm": m["area_sqkm"],
         "spatialConfidence": m["spatial_confidence"],
+        "spatialLimitationNote": m["spatial_limitation_note"],
         "geoJoinConfidence": m["geo_join_confidence"],
         "svi": m["svi"],
         "droughtExposure": m["drought_exposure"],
@@ -95,7 +128,7 @@ def _system_to_dict(row: Any) -> dict[str, Any]:
 
 
 def _filters(
-    q: str | None, county: str | None, tier: str | None, size: str | None, spatial: str | None
+    q: str | None, county: str | None, tier: str | None, size: str | None, geography: str | None
 ) -> tuple[str, dict[str, Any]]:
     """Build a shared WHERE clause + bound params from the dashboard filters."""
     clauses: list[str] = []
@@ -112,9 +145,11 @@ def _filters(
     if size:
         clauses.append("size_class = :size")
         params["size"] = size
-    if spatial:
-        clauses.append("spatial_confidence = :spatial")
-        params["spatial"] = spatial
+    if geography and geography in GEOGRAPHY_BUCKETS:
+        tiers = GEOGRAPHY_BUCKETS[geography]
+        placeholders = ", ".join(f":geo{i}" for i in range(len(tiers)))
+        clauses.append(f"geometry_source_tier IN ({placeholders})")
+        params.update({f"geo{i}": value for i, value in enumerate(tiers)})
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     return where, params
 
@@ -165,10 +200,10 @@ def summary(
     county: str | None = None,
     tier: str | None = None,
     size: str | None = None,
-    spatial: str | None = None,
+    geography: str | None = None,
 ) -> dict[str, Any]:
     """Filter-aware aggregates that drive the metric cards and both charts."""
-    where, params = _filters(q, county, tier, size, spatial)
+    where, params = _filters(q, county, tier, size, geography)
     engine = get_engine()
     with engine.connect() as conn:
         metrics = conn.execute(
@@ -178,7 +213,10 @@ def summary(
                     COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE tier IN ('Critical Review', 'High Review')) AS high_review,
                     COUNT(*) FILTER (WHERE tier = 'Critical Review') AS critical_review,
-                    COUNT(*) FILTER (WHERE spatial_confidence IN ('low', 'unknown')) AS low_spatial
+                    COUNT(*) FILTER (WHERE geometry_source_tier = 'verified_service_area_boundary') AS verified_service_areas,
+                    COUNT(*) FILTER (WHERE geometry_source_tier = 'modeled_service_area_boundary') AS modeled_service_areas,
+                    COUNT(*) FILTER (WHERE geometry_source_tier IN ('validated_system_coordinate', 'city_or_zip_centroid', 'county_centroid')) AS approximate_locations,
+                    COUNT(*) FILTER (WHERE geometry_source_tier = 'unmatched') AS unmatched_geography
                 FROM water_systems{where}
                 """
             ),
@@ -210,7 +248,13 @@ def summary(
         "total": int(metrics["total"]),
         "highReview": int(metrics["high_review"]),
         "criticalReview": int(metrics["critical_review"]),
-        "lowSpatial": int(metrics["low_spatial"]),
+        "geography": {
+            "verifiedServiceAreas": int(metrics["verified_service_areas"]),
+            "modeledServiceAreas": int(metrics["modeled_service_areas"]),
+            "approximateLocations": int(metrics["approximate_locations"]),
+            "unmatchedGeography": int(metrics["unmatched_geography"]),
+            "sourceProtectionStatus": "not_loaded_phase_1",
+        },
         "tiers": [{"tier": tier, "systems": int(tier_counts.get(tier, 0))} for tier in TIER_ORDER],
         "topCounties": [
             {"county": row["county"], "highReviewSystems": int(row["high_review_systems"])}
@@ -225,7 +269,7 @@ def systems(
     county: str | None = None,
     tier: str | None = None,
     size: str | None = None,
-    spatial: str | None = None,
+    geography: str | None = None,
     sort: str = "rank",
     order: str = "asc",
     page: int = Query(default=1, ge=1),
@@ -234,7 +278,7 @@ def systems(
     """Filtered, sorted, paginated systems plus the total match count."""
     sort_column = SORT_COLUMNS.get(sort, "rank_statewide")
     direction = "DESC" if order.lower() == "desc" else "ASC"
-    where, params = _filters(q, county, tier, size, spatial)
+    where, params = _filters(q, county, tier, size, geography)
     offset = (page - 1) * page_size
 
     engine = get_engine()
@@ -259,6 +303,27 @@ def systems(
     }
 
 
+def _geography_evidence(m: Any) -> dict[str, Any]:
+    tier = m["geometry_source_tier"]
+    primary = {
+        "verified_service_area_boundary": "EPA service-area polygon (system-sourced)",
+        "modeled_service_area_boundary": "EPA service-area polygon (modeled)",
+        "county_centroid": "County centroid (approximate)",
+        "unmatched": "No geography matched",
+    }.get(tier, "Approximate location")
+    return {
+        "primaryGeometry": primary,
+        "geometrySourceTier": tier,
+        "boundaryType": m["boundary_type"],
+        "boundaryProvider": m["boundary_provider"],
+        "matchMethod": m["match_method"],
+        "areaSqKm": m["area_sqkm"],
+        "spatialConfidence": m["spatial_confidence"],
+        "sourceProtectionStatus": "not_evaluated_phase_1",
+        "limitationNote": m["spatial_limitation_note"],
+    }
+
+
 @app.get("/systems/{pwsid}")
 def system_detail(pwsid: str) -> dict[str, Any]:
     engine = get_engine()
@@ -268,7 +333,9 @@ def system_detail(pwsid: str) -> dict[str, Any]:
         ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail=f"System {pwsid} not found")
-    return _system_to_dict(row)
+    payload = _system_to_dict(row)
+    payload["geographyEvidence"] = _geography_evidence(row._mapping)
+    return payload
 
 
 @app.get("/map/points")
@@ -277,10 +344,10 @@ def map_points(
     county: str | None = None,
     tier: str | None = None,
     size: str | None = None,
-    spatial: str | None = None,
+    geography: str | None = None,
 ) -> list[dict[str, Any]]:
     """Lightweight markers for every filtered system with usable coordinates."""
-    where, params = _filters(q, county, tier, size, spatial)
+    where, params = _filters(q, county, tier, size, geography)
     coord_clause = "latitude IS NOT NULL AND longitude IS NOT NULL"
     where = f"{where} AND {coord_clause}" if where else f" WHERE {coord_clause}"
     engine = get_engine()
@@ -289,7 +356,7 @@ def map_points(
             text(
                 f"""
                 SELECT pwsid, name, county, latitude, longitude, tier, score,
-                       rank_statewide, population, spatial_confidence,
+                       rank_statewide, population, spatial_confidence, geometry_source_tier,
                        driver_1, driver_2
                 FROM water_systems{where}
                 ORDER BY rank_statewide ASC
@@ -309,7 +376,59 @@ def map_points(
             "rankStatewide": row["rank_statewide"],
             "population": row["population"],
             "spatialConfidence": row["spatial_confidence"],
+            "geometrySourceTier": row["geometry_source_tier"],
             "drivers": [row["driver_1"], row["driver_2"]],
         }
         for row in rows
     ]
+
+
+@app.get("/map/boundaries")
+def map_boundaries(
+    q: str | None = None,
+    county: str | None = None,
+    tier: str | None = None,
+    size: str | None = None,
+    geography: str | None = None,
+) -> dict[str, Any]:
+    """GeoJSON FeatureCollection of simplified service-area polygons for the filtered set.
+
+    Only systems with a service-area boundary (verified/modeled tiers) are returned.
+    Responses are gzip-compressed by middleware; payload size is logged.
+    """
+    where, params = _filters(q, county, tier, size, geography)
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                f"""
+                SELECT b.pwsid, b.boundary_type, s.name, s.tier, s.geometry_source_tier, b.geometry
+                FROM water_system_boundaries b
+                JOIN (
+                    SELECT pwsid, name, county, tier, size_class, geometry_source_tier
+                    FROM water_systems{where}
+                ) s ON b.pwsid = s.pwsid
+                ORDER BY s.tier
+                """
+            ),
+            params,
+        ).mappings().all()
+
+    features = [
+        {
+            "type": "Feature",
+            "properties": {
+                "pwsid": row["pwsid"],
+                "name": row["name"],
+                "tier": row["tier"],
+                "boundaryType": row["boundary_type"],
+                "geometrySourceTier": row["geometry_source_tier"],
+            },
+            "geometry": row["geometry"],
+        }
+        for row in rows
+    ]
+    collection = {"type": "FeatureCollection", "features": features}
+    payload_bytes = len(json.dumps(collection, separators=(",", ":")))
+    logger.info("map_boundaries: %d features, %.2f MB uncompressed", len(features), payload_bytes / 1_000_000)
+    return collection
