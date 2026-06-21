@@ -8,5 +8,5 @@
 //   window.APP_CONFIG = { apiBase: "https://water-api.scottcampbell.io" };
 //
 window.APP_CONFIG = {
-  apiBase: "http://localhost:8000"
+  apiBase: "https://water-api.scottcampbell.io"
 };
