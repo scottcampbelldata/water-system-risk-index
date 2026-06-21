@@ -85,6 +85,8 @@ Geometry source (mapping precision):
 
 The large share of approximate geography is an important analytical finding: many systems can be scored from SDWA records, but only 1,077 (6.6%) have an EPA service-area polygon. Modeled boundaries are treated as screening context, not verified service-area determinations.
 
+A separate **source-water protection (SWAP)** overlay adds Ohio EPA protection polygons — 7,390 areas covering 3,751 systems — kept strictly distinct from service areas: a service area is who may receive water, while a SWAP area is where the supply is protected around wells and intakes. Facility points (wells/intakes/treatment plants) are deferred because no public Ohio source publishes usable coordinates.
+
 ### Sample findings
 
 These observations come directly from the scored Ohio prototype:
@@ -97,7 +99,7 @@ These are screening observations from public data, not regulatory findings about
 
 ## 10. Validation and Limitations
 
-Validation passed 19 checks (expanded from 13), including duplicate PWSID detection, score bounds, required columns, valid risk tiers, valid geometry source tiers and spatial confidence, valid funding match confidence, row-count consistency, and a geometry suite: one boundary geometry per PWSID after dissolve, boundary count reconciliation to the EPA source, simplified-geometry area-delta within threshold, parseable GeoJSON for matched systems, and a valid map-boundaries FeatureCollection.
+Validation passed 22 checks (expanded from 13), including duplicate PWSID detection, score bounds, required columns, valid risk tiers, valid geometry source tiers and spatial confidence, valid funding match confidence, row-count consistency, a geometry suite (one boundary geometry per PWSID after dissolve, boundary count reconciliation to the EPA source, simplified-geometry area-delta within threshold, parseable GeoJSON for matched systems, a valid map-boundaries FeatureCollection), and a SWAP suite (parseable source-water protection geometry, count reconciliation, and per-system coverage).
 
 Limitations:
 

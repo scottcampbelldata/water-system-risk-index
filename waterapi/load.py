@@ -77,6 +77,14 @@ BOUNDARY_INSERT = text(
     """
 )
 
+SWAP_INSERT = text(
+    """
+    INSERT INTO water_system_swap_areas (pwsid, area_kind, sys_name, county, area_sqkm, geometry)
+    VALUES (:pwsid, :area_kind, :sys_name, :county, :area_sqkm, CAST(:geometry AS jsonb))
+    ON CONFLICT (pwsid, area_kind) DO NOTHING
+    """
+)
+
 
 def _system_row(system: dict) -> dict:
     drivers = system.get("drivers") or []
@@ -159,6 +167,23 @@ def load(seed_path: Path | None = None) -> int:
             for pwsid, entry in boundaries.items()
         ]
 
+    # Phase 2 SWAP source-water protection areas (optional — present once loaded).
+    swap_path = path.parent / "swap_areas.json"
+    swap_rows = []
+    if swap_path.exists():
+        swap = json.loads(swap_path.read_text(encoding="utf-8"))
+        swap_rows = [
+            {
+                "pwsid": area.get("pwsid"),
+                "area_kind": area.get("areaKind"),
+                "sys_name": area.get("sysName"),
+                "county": area.get("county"),
+                "area_sqkm": area.get("areaSqKm"),
+                "geometry": json.dumps(area.get("geometry"), separators=(",", ":")),
+            }
+            for area in swap
+        ]
+
     system_rows = [_system_row(system) for system in systems]
     validation_rows = [
         {
@@ -173,18 +198,38 @@ def load(seed_path: Path | None = None) -> int:
 
     engine = get_engine()
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE water_system_boundaries, water_systems, app_metadata, validation_checks"))
+        conn.execute(
+            text("TRUNCATE water_system_swap_areas, water_system_boundaries, water_systems, app_metadata, validation_checks")
+        )
         if system_rows:
             conn.execute(SYSTEM_INSERT, system_rows)
         if boundary_rows:
             conn.execute(BOUNDARY_INSERT, boundary_rows)
+        if swap_rows:
+            conn.execute(SWAP_INSERT, swap_rows)
+            # Flag systems that have at least one matching source-protection area,
+            # and record which kinds (only meaningful now that SWAP is loaded).
+            conn.execute(
+                text(
+                    """
+                    UPDATE water_systems w SET
+                        source_protection_status = 'available',
+                        source_protection_kinds = sub.kinds
+                    FROM (
+                        SELECT pwsid, string_agg(DISTINCT area_kind, '|' ORDER BY area_kind) AS kinds
+                        FROM water_system_swap_areas GROUP BY pwsid
+                    ) sub
+                    WHERE w.pwsid = sub.pwsid
+                    """
+                )
+            )
         conn.execute(METADATA_INSERT, {"data": json.dumps(metadata)})
         if validation_rows:
             conn.execute(VALIDATION_INSERT, validation_rows)
 
     print(
         f"Loaded {len(system_rows):,} systems, {len(boundary_rows):,} boundaries, "
-        f"{len(validation_rows)} validation checks from {path}"
+        f"{len(swap_rows):,} SWAP areas, {len(validation_rows)} validation checks from {path}"
     )
     return len(system_rows)
 

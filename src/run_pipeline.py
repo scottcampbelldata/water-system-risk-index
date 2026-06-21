@@ -10,6 +10,7 @@ from load_drought import load_drought
 from load_sdwis import load_sdwis
 from load_service_areas import load_service_areas
 from load_svi import load_svi
+from load_swap_areas import load_swap_areas
 from score_risk import score_risk
 from validate_outputs import validate_outputs
 
@@ -19,6 +20,11 @@ def run_pipeline() -> None:
     load_sdwis()
     print("Loading service areas...")
     load_service_areas()
+    print("Loading SWAP source-water protection areas...")
+    try:
+        load_swap_areas()
+    except Exception as exc:  # noqa: BLE001 - SWAP is an optional overlay; don't fail the pipeline
+        print(f"  SWAP load skipped ({exc.__class__.__name__}: {exc}); continuing without source-protection overlay.")
     print("Loading SVI...")
     load_svi()
     print("Loading drought...")

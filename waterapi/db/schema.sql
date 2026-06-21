@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS water_systems (
     match_method                  text,
     area_sqkm                     double precision,
     spatial_limitation_note       text,
+    source_protection_status      text DEFAULT 'none',
+    source_protection_kinds       text,
     geo_join_confidence           text,
     svi                           double precision,
     drought_exposure              double precision,
@@ -80,6 +82,22 @@ CREATE TABLE IF NOT EXISTS water_system_boundaries (
     geometry          jsonb NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_boundaries_type ON water_system_boundaries (boundary_type);
+
+-- Phase 2: Ohio EPA source-water protection (SWAP) areas. These describe where a
+-- system's water supply is protected (around wells/intakes) and are kept separate
+-- from service-area boundaries (who may receive water). No FK: SWAP may reference
+-- systems outside the scored set. One geometry per (pwsid, area_kind) after dissolve.
+CREATE TABLE IF NOT EXISTS water_system_swap_areas (
+    pwsid     text,
+    area_kind text,
+    sys_name  text,
+    county    text,
+    area_sqkm double precision,
+    geometry  jsonb NOT NULL,
+    PRIMARY KEY (pwsid, area_kind)
+);
+CREATE INDEX IF NOT EXISTS idx_swap_pwsid ON water_system_swap_areas (pwsid);
+CREATE INDEX IF NOT EXISTS idx_swap_kind ON water_system_swap_areas (area_kind);
 
 -- The data-quality / validation check results.
 CREATE TABLE IF NOT EXISTS validation_checks (

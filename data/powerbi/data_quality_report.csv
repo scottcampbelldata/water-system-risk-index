@@ -18,3 +18,6 @@ no_duplicate_boundary_pwsid_after_dissolve,pass,critical,0,One boundary geometry
 boundary_count_reconciles_to_source,pass,high,0,raw=1077 unique_pwsid=1077 dissolved=1077 web_rows=1077 matched_in_geography=1077
 simplified_geometry_area_delta_within_threshold,pass,medium,7,tolerance=5.0m avg_area_delta=0.002934404428705595 max_area_delta=0.08314393351226262 over_threshold=7 fraction_over=0.0065
 map_boundaries_featurecollection_valid,pass,high,0,Assembled a valid FeatureCollection with 1077 boundary features.
+swap_areas_parseable,pass,high,0,0 unparseable SWAP geometries of 7390.
+swap_count_reconciles,pass,high,0,report_dissolved=7390 seed_areas=7390 distinct_pwsids=3756
+swap_pwsid_coverage_present,pass,medium,3751,3751 scored systems have a source-protection area.

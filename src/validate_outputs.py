@@ -188,6 +188,34 @@ def validate_outputs() -> pd.DataFrame:
         fc_valid = False
     add_check(rows, "map_boundaries_featurecollection_valid", bool(fc_valid), "high", 0, f"Assembled a valid FeatureCollection with {len(boundaries)} boundary features.")
 
+    # --- Phase 2: SWAP source-water protection checks (only when SWAP is loaded) ---
+    swap_seed = REPO_ROOT / "data" / "processed" / "swap_areas.json"
+    swap_report_path = REPO_ROOT / "data" / "interim" / "swap_report.json"
+    if swap_seed.exists():
+        swap = json.loads(swap_seed.read_text(encoding="utf-8"))
+        swap_report = json.loads(swap_report_path.read_text(encoding="utf-8")) if swap_report_path.exists() else {}
+
+        def _swap_parseable(area: dict) -> bool:
+            geom = area.get("geometry") or {}
+            return geom.get("type") in {"Polygon", "MultiPolygon"} and bool(geom.get("coordinates"))
+
+        bad_swap = sum(1 for area in swap if not _swap_parseable(area))
+        add_check(rows, "swap_areas_parseable", bad_swap == 0, "high", bad_swap, f"{bad_swap} unparseable SWAP geometries of {len(swap)}.")
+
+        dissolved_n = swap_report.get("dissolved_output_count")
+        add_check(
+            rows,
+            "swap_count_reconciles",
+            dissolved_n == len(swap) and len(swap) > 0,
+            "high",
+            0,
+            f"report_dissolved={dissolved_n} seed_areas={len(swap)} distinct_pwsids={swap_report.get('distinct_pwsids')}",
+        )
+
+        covered = {area.get("pwsid") for area in swap}
+        matched = len(covered & set(risk["pwsid"]))
+        add_check(rows, "swap_pwsid_coverage_present", matched > 0, "medium", matched, f"{matched} scored systems have a source-protection area.")
+
     output = pd.DataFrame(rows)
     write_dataframe(output, REPO_ROOT / "data" / "processed" / "data_quality_report")
     output.to_csv(REPO_ROOT / "data" / "powerbi" / "data_quality_report.csv", index=False)

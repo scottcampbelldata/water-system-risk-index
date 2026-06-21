@@ -106,9 +106,10 @@ Current run produced:
 
 - 16,339 Ohio public water system records scored
 - 1,077 EPA service-area boundary polygons preserved and mapped (207 system-sourced, 870 modeled)
+- 7,390 Ohio EPA SWAP source-water protection areas mapped as a separate overlay (3,751 systems covered)
 - 7 processed analytical outputs
 - 9 Power BI-ready CSV exports
-- 19 validation checks, all passing (expanded from 13 to cover geometry source, dissolve, and simplification quality)
+- 22 validation checks, all passing (expanded from 13 to cover geometry source, dissolve, simplification quality, and SWAP)
 - Portfolio charts in `outputs/charts/`
 
 Run the complete pipeline:
@@ -160,6 +161,7 @@ processed CSVs ──(src/export_web_app_data.py)──> data/processed/app_data
 | `GET /summary` | filter-aware metric + chart aggregates (total, geography breakdown, tier counts, top counties) |
 | `GET /tiers` | statewide tier counts |
 | `GET /map/boundaries` | gzip GeoJSON FeatureCollection of simplified service-area polygons for the filtered set |
+| `GET /map/swap` | gzip GeoJSON FeatureCollection of SWAP source-water protection areas (filtered; optional `kind`) |
 | `GET /systems` | filtered / sorted / paginated systems + total count |
 | `GET /systems/{pwsid}` | single system detail |
 | `GET /map/points` | lightweight map markers for the current filter |
@@ -187,16 +189,22 @@ Each record is assigned a geometry-source tier (most to least precise):
 | `county_centroid` | Approximate Location | very_low |
 | `unmatched` | Unmatched Geography | unknown |
 
-Modeled EPA polygons are deliberately **not** labeled "verified." Service-area
-boundaries (who may receive water) are kept semantically separate from
-source-water protection areas (where supply is protected); the latter is a planned
-**Phase 2** overlay and is not loaded yet. Facility points (wells/intakes/treatment
-plants) are deferred because no public Ohio source publishes usable coordinates.
+Modeled EPA polygons are deliberately **not** labeled "verified."
 
-The frontend exposes map layer controls (records, service-area boundaries, county
-boundaries) and a per-system **geography evidence** panel (primary geometry,
-boundary type, provider, PWSID match, area, confidence, source-protection status,
-limitation note).
+**Phase 2 — source-water protection (SWAP).** Service-area boundaries (who may
+receive water) are kept semantically separate from **source-water protection
+areas** (where the supply is protected). Ohio EPA SWAP polygons are loaded as a
+distinct overlay (groundwater protection areas, inner management zones, and inland
+/ Lake Erie / Ohio River surface-water areas) — 7,390 dissolved areas covering
+3,751 scored systems. They are never merged with service areas; a system's
+`sourceProtectionStatus` is `available`/`none` and the overlay is off by default
+(loaded on demand). Facility points (wells/intakes/treatment plants) remain
+deferred because no public Ohio source publishes usable coordinates.
+
+The frontend exposes map layer controls (records, service-area boundaries,
+source-water protection areas, county boundaries) and a per-system **geography
+evidence** panel (primary geometry, boundary type, provider, PWSID match, area,
+confidence, source-protection status + kinds, limitation note).
 
 ### Run the backend locally
 

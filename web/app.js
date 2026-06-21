@@ -12,6 +12,7 @@ const state = {
   map: null,
   markerLayer: null,
   boundaryLayer: null,
+  swapLayer: null,
   countyLayer: null,
   markerByPwsid: new Map(),
   loadToken: 0
@@ -30,6 +31,27 @@ const boundaryColors = {
   verified_service_area_boundary: "#14746f",
   modeled_service_area_boundary: "#b98322"
 };
+
+const swapColors = {
+  groundwater_swpa: "#3b6fb0",
+  inner_management_zone: "#6b46c1",
+  surface_water_inland: "#2a9d8f",
+  surface_water_lake_erie: "#0a7ea4",
+  surface_water_ohio_river: "#1d4ed8"
+};
+
+const swapKindLabels = {
+  groundwater_swpa: "Groundwater protection area",
+  inner_management_zone: "Inner management zone",
+  surface_water_inland: "Surface water (inland)",
+  surface_water_lake_erie: "Surface water (Lake Erie)",
+  surface_water_ohio_river: "Surface water (Ohio River)"
+};
+
+function prettyKinds(value) {
+  if (!value) return "";
+  return value.split("|").map(k => swapKindLabels[k] || k.replace(/_/g, " ")).join(", ");
+}
 
 const colors = {
   "Critical Review": "#8f1f1f",
@@ -209,6 +231,7 @@ async function applyFilters({ resetSelection } = { resetSelection: true }) {
   fitMapToFiltered();
   // Service-area boundaries can be a few MB statewide; load them without blocking the dashboard.
   loadBoundaries(token, base);
+  loadSwap(token, base); // no-op unless the user has enabled the SWAP overlay
 }
 
 function renderMetrics() {
@@ -224,7 +247,9 @@ function renderMetrics() {
   els.geoModeled.textContent = formatNumber(geo.modeledServiceAreas);
   els.geoApproximate.textContent = formatNumber(geo.approximateLocations);
   els.geoUnmatched.textContent = formatNumber(geo.unmatchedGeography);
-  els.geoSourceProtection.textContent = "Not loaded (Phase 1)";
+  els.geoSourceProtection.textContent = geo.sourceProtectionAvailable === undefined
+    ? "--"
+    : formatNumber(geo.sourceProtectionAvailable);
 }
 
 function renderLegend() {
@@ -296,6 +321,24 @@ function initializeMap() {
       layer.on("click", () => selectByPwsid(feature.properties.pwsid, false));
     }
   }).addTo(state.map);
+  // Source-water protection areas (where supply is protected) — distinct from
+  // service-area boundaries. Off by default and loaded on demand.
+  state.swapLayer = L.geoJSON(null, {
+    style: feature => ({
+      color: swapColors[feature.properties.areaKind] || "#475569",
+      weight: 1,
+      dashArray: "4 3",
+      fillColor: swapColors[feature.properties.areaKind] || "#475569",
+      fillOpacity: 0.14
+    }),
+    onEachFeature: (feature, layer) => {
+      layer.bindPopup(`<div class="map-popup"><h3>${feature.properties.name || feature.properties.pwsid}</h3>` +
+        `<p><strong>${feature.properties.pwsid}</strong></p>` +
+        `<p>${swapKindLabels[feature.properties.areaKind] || feature.properties.areaKind}</p>` +
+        `<p class="muted">Source-water protection area — where the supply is protected, not a service area.</p></div>`);
+    }
+  });
+
   state.countyLayer = L.geoJSON(null, {
     style: { color: "#94a3b8", weight: 1, fill: false, dashArray: "3 3" }
   });
@@ -303,8 +346,17 @@ function initializeMap() {
   L.control.layers(null, {
     "Water system records": state.markerLayer,
     "Service area boundaries": state.boundaryLayer,
+    "Source water protection areas": state.swapLayer,
     "County boundaries": state.countyLayer
   }, { collapsed: false }).addTo(state.map);
+
+  // The SWAP overlay is several MB statewide; fetch only when the user enables it.
+  state.map.on("overlayadd", event => {
+    if (event.layer === state.swapLayer) loadSwap(state.loadToken, filterParams());
+  });
+  state.map.on("overlayremove", event => {
+    if (event.layer === state.swapLayer) state.swapLayer.clearLayers();
+  });
 
   // County boundaries are a static asset, loaded once and toggled off by default.
   fetch("data/ohio_counties.geojson")
@@ -325,6 +377,18 @@ async function loadBoundaries(token, base) {
   } catch (error) {
     // Boundaries are an enhancement layer; failure should not break the dashboard.
     if (state.boundaryLayer) state.boundaryLayer.clearLayers();
+  }
+}
+
+async function loadSwap(token, base) {
+  if (!state.swapLayer || !state.map.hasLayer(state.swapLayer)) return;
+  try {
+    const collection = await api("/map/swap", base);
+    if (token !== state.loadToken || !state.map.hasLayer(state.swapLayer)) return;
+    state.swapLayer.clearLayers();
+    state.swapLayer.addData(collection);
+  } catch (error) {
+    if (state.swapLayer) state.swapLayer.clearLayers();
   }
 }
 
@@ -472,7 +536,7 @@ function renderGeographyEvidence(system) {
       ${geographyEvidenceRow("PWSID match", system.matchMethod ? system.matchMethod.replace("_", " ") : "n/a")}
       ${matched ? geographyEvidenceRow("Service area", `${formatNumber(system.areaSqKm)} km²`) : ""}
       ${geographyEvidenceRow("Spatial confidence", String(system.spatialConfidence || "").replace(/_/g, " "))}
-      ${geographyEvidenceRow("Source protection", "Not evaluated (Phase 1)")}
+      ${geographyEvidenceRow("Source protection", system.sourceProtectionStatus === "available" ? `Available — ${prettyKinds(system.sourceProtectionKinds)}` : "None found")}
       <p class="muted evidence-note">${system.spatialLimitationNote || ""}</p>
     </div>
   `;
