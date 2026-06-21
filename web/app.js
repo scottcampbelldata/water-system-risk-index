@@ -348,7 +348,7 @@ function initializeMap() {
     "Service area boundaries": state.boundaryLayer,
     "Source water protection areas": state.swapLayer,
     "County boundaries": state.countyLayer
-  }, { collapsed: false }).addTo(state.map);
+  }, { collapsed: true }).addTo(state.map);
 
   // The SWAP overlay is several MB statewide; fetch only when the user enables it.
   state.map.on("overlayadd", event => {
