@@ -5,10 +5,14 @@ data/interim/
 # Local tooling artifacts
 .playwright-mcp/
 
+# Secrets / local config
+.env
+
 # Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+build/
 .ipynb_checkpoints/
 .venv/
 venv/

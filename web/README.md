@@ -1,24 +1,36 @@
-# Portfolio Web App
+# Frontend — static dashboard
 
-This folder is the deployable static portfolio app for the Water System Risk & Funding Priority Index.
+Deployable static bundle for the Water System Risk & Funding Priority Index,
+hosted on Cloudflare Pages (`water-risk.example.com`). It no longer bundles
+any data file: all data is fetched from the FastAPI backend
+(`water-api.example.com`), with server-side filtering, sorting and
+pagination.
 
-Deploy these files as a static site:
+Deployable files (output directory = `web/`):
 
 - `index.html`
 - `styles.css`
+- `config.js` — sets `window.APP_CONFIG.apiBase`
 - `app.js`
-- `data/app_data.json`
+- `vendor/leaflet/*`
+- `data/ohio_map.json`, `data/ohio_counties.geojson` — static map assets (well under 25 MiB)
 
-Regenerate app data after running the pipeline:
+## Configure the API base URL
 
-```powershell
-python src/export_web_app_data.py
+Edit [`config.js`](config.js):
+
+```js
+window.APP_CONFIG = { apiBase: "http://localhost:8000" };          // dev
+window.APP_CONFIG = { apiBase: "https://water-api.example.com" }; // prod
 ```
 
-Run locally:
+## Run locally
+
+Start the backend (see [`../docs/deploy.md`](../docs/deploy.md)), then serve the
+static files:
 
 ```powershell
 python -m http.server 8080 -d web
 ```
 
-Then open `http://localhost:8080`.
+Open `http://localhost:8080`.
