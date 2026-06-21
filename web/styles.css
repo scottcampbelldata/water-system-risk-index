@@ -616,3 +616,45 @@ tbody tr.selected {
   padding: 0;
   flex: 0 0 auto;
 }
+
+/* Map overlay legend (explains boundary and source-protection polygon colors). */
+.overlay-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.overlay-legend-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.overlay-legend-title {
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 11px;
+}
+
+.overlay-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+
+.overlay-legend .swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.65;
+}
