@@ -15,7 +15,6 @@
       </div>
       <div class="header-actions">
         <button class="ghost-button" id="resetFilters" type="button">Reset filters</button>
-        <a class="primary-link" href="data/app_data.json" download>Download app data</a>
       </div>
     </header>
 
@@ -123,6 +122,11 @@
             <h2>Ranked Review List</h2>
             <p id="tableCount">-- systems shown</p>
           </div>
+          <div class="pager">
+            <button class="ghost-button" id="prevPage" type="button">Prev</button>
+            <span id="pageInfo" class="muted">Page 1 of 1</span>
+            <button class="ghost-button" id="nextPage" type="button">Next</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -167,6 +171,7 @@
 
     <div class="tooltip" id="tooltip" hidden></div>
     <script src="vendor/leaflet/leaflet.js"></script>
-    <script src="app.js?v=ohio-bounds-1"></script>
+    <script src="config.js"></script>
+    <script src="app.js?v=api-1"></script>
   </body>
 </html>

@@ -2,10 +2,14 @@
 data/raw/
 data/interim/
 
+# Secrets / local config
+.env
+
 # Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+build/
 .ipynb_checkpoints/
 .venv/
 venv/
