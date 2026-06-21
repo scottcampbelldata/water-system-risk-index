@@ -1,0 +1,21 @@
+# Large / regenerable source data (downloaded by src/download_data.py)
+data/raw/
+data/interim/
+
+# Local tooling artifacts
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
