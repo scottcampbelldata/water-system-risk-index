@@ -225,7 +225,7 @@ function renderCharts() {
   const countyRows = state.summary.topCounties;
   renderBarChart(
     els.countyChart,
-    countyRows.length ? countyRows : [{ county: "No high-review systems in filter", highReviewSystems: 0 }],
+    countyRows.length ? countyRows : [{ county: "No high-review records in filter", highReviewSystems: 0 }],
     "highReviewSystems",
     "county",
     () => "#14746f"
@@ -347,7 +347,7 @@ function renderTable() {
   const rows = state.items;
   const start = state.total === 0 ? 0 : (state.page - 1) * state.pageSize + 1;
   const end = Math.min(state.total, state.page * state.pageSize);
-  els.tableCount.textContent = `${formatNumber(state.total)} systems match filters; showing ${formatNumber(start)}-${formatNumber(end)}`;
+  els.tableCount.textContent = `${formatNumber(state.total)} records match filters; showing ${formatNumber(start)}-${formatNumber(end)}`;
 
   els.pageInfo.textContent = state.total === 0 ? "Page 0 of 0" : `Page ${state.page} of ${Math.max(1, Math.ceil(state.total / state.pageSize))}`;
   els.prevPage.disabled = state.page <= 1;
@@ -384,7 +384,7 @@ function renderComponentBars(system) {
 function renderDetail() {
   const system = state.selected;
   if (!system) {
-    els.detailSubtitle.textContent = "No systems match the current filters.";
+    els.detailSubtitle.textContent = "No records match the current filters.";
     els.systemDetail.innerHTML = "<p class=\"muted\">Adjust filters to restore results.</p>";
     return;
   }
