@@ -33,12 +33,19 @@ const boundaryColors = {
 };
 
 const swapColors = {
-  groundwater_swpa: "#3b6fb0",
-  inner_management_zone: "#6b46c1",
-  surface_water_inland: "#2a9d8f",
-  surface_water_lake_erie: "#0a7ea4",
-  surface_water_ohio_river: "#1d4ed8"
+  groundwater_swpa: "#2563eb",          // blue  - 5-year groundwater protection area
+  inner_management_zone: "#7c3aed",     // purple - 1-year inner management zone
+  surface_water_inland: "#15803d",      // green - surface-water protection area (watershed)
+  surface_water_lake_erie: "#15803d",
+  surface_water_ohio_river: "#15803d"
 };
+
+// Three legend categories for the SWAP overlay (surface-water types share a color).
+const swapLegend = [
+  ["#2563eb", "Groundwater protection area"],
+  ["#7c3aed", "Inner management zone"],
+  ["#15803d", "Surface-water protection area"]
+];
 
 const swapKindLabels = {
   groundwater_swpa: "Groundwater protection area",
@@ -93,6 +100,7 @@ const els = {
   showAllMarkers: document.getElementById("showAllMarkers"),
   resetFilters: document.getElementById("resetFilters"),
   tierLegend: document.getElementById("tierLegend"),
+  overlayLegend: document.getElementById("overlayLegend"),
   tierChart: document.getElementById("tierChart"),
   countyChart: document.getElementById("countyChart"),
   map: document.getElementById("streetMap"),
@@ -258,6 +266,30 @@ function renderLegend() {
   `).join("");
 }
 
+function legendBlock(title, items) {
+  return `<div class="overlay-legend-group"><span class="overlay-legend-title">${title}</span>` +
+    items.map(([color, label]) => `<span class="legend-item"><span class="swatch" style="background:${color}"></span>${label}</span>`).join("") +
+    `</div>`;
+}
+
+// Explains the polygon overlays currently shown on the map. The marker tier legend
+// (Critical/High/etc.) is separate; this covers boundary and source-protection colors.
+function renderOverlayLegend() {
+  if (!els.overlayLegend || !state.map) return;
+  const sections = [];
+  if (state.boundaryLayer && state.map.hasLayer(state.boundaryLayer)) {
+    sections.push(legendBlock("Service area boundaries", [
+      [boundaryColors.verified_service_area_boundary, "System-sourced"],
+      [boundaryColors.modeled_service_area_boundary, "Modeled"]
+    ]));
+  }
+  if (state.swapLayer && state.map.hasLayer(state.swapLayer)) {
+    sections.push(legendBlock("Source-water protection areas (where supply is protected)", swapLegend));
+  }
+  els.overlayLegend.innerHTML = sections.join("");
+  els.overlayLegend.hidden = sections.length === 0;
+}
+
 function renderBarChart(container, rows, valueKey, labelKey, colorFn) {
   const max = Math.max(1, ...rows.map(row => row[valueKey]));
   container.innerHTML = rows.map(row => {
@@ -353,10 +385,13 @@ function initializeMap() {
   // The SWAP overlay is several MB statewide; fetch only when the user enables it.
   state.map.on("overlayadd", event => {
     if (event.layer === state.swapLayer) loadSwap(state.loadToken, filterParams());
+    renderOverlayLegend();
   });
   state.map.on("overlayremove", event => {
     if (event.layer === state.swapLayer) state.swapLayer.clearLayers();
+    renderOverlayLegend();
   });
+  renderOverlayLegend();
 
   // County boundaries are a static asset, loaded once and toggled off by default.
   fetch("data/ohio_counties.geojson")
