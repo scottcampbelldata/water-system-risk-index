@@ -9,7 +9,7 @@ It is not a regulatory determination, legal finding, engineering siting tool, of
 ## Ohio MVP Run
 
 - Prototype state: Ohio
-- Systems scored: 16,339
+- Records scored: 16,339 Ohio public water system records
 - Model version: 0.1.0
 - Final scoring output: `data/processed/water_system_risk_scores.csv`
 - Power BI fact table: `data/powerbi/FactRiskScores.csv`
