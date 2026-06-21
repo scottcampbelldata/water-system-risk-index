@@ -1,0 +1,19 @@
+[Unit]
+Description=Water System Risk Index - FastAPI service (uvicorn, localhost only)
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=simple
+User=scott
+Group=scott
+WorkingDirectory=/home/scott/water-system-risk-index
+EnvironmentFile=/home/scott/water-system-risk-index/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m uvicorn waterapi.api.main:app --host 127.0.0.1 --port ${WATER_API_PORT}
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

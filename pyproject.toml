@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waterapi"
+version = "0.1.0"
+description = "FastAPI backend serving the Water System Risk Index from Postgres"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+waterapi = "waterapi.cli:main"
+
+[tool.setuptools]
+packages = ["waterapi", "waterapi.api", "waterapi.db"]
