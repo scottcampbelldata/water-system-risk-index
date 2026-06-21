@@ -77,7 +77,7 @@ def build_master() -> pd.DataFrame:
     ref = read_interim("ref_code_values")
 
     service_path = REPO_ROOT / "data" / "interim" / "service_areas_ohio.parquet"
-    service = pd.read_parquet(service_path) if service_path.exists() else pd.DataFrame(columns=["pwsid", "spatial_confidence"])
+    service = pd.read_parquet(service_path) if service_path.exists() else pd.DataFrame(columns=["pwsid", "geometry_source_tier"])
 
     pws = pws.copy()
     pws["submission_sort"] = pws["submissionyearquarter"].map(parse_submission_quarter)
@@ -105,8 +105,18 @@ def build_master() -> pd.DataFrame:
     activity_map = {"A": "Active", "I": "Inactive", "N": "Changed from public to non-public", "M": "Merged", "P": "Potential future"}
 
     master = latest.merge(first_last, on="pwsid", how="left").merge(geo_lookup, on="pwsid", how="left")
-    service_conf = service[["pwsid", "spatial_confidence"]].drop_duplicates("pwsid") if not service.empty else service
-    master = master.merge(service_conf.rename(columns={"spatial_confidence": "service_area_spatial_confidence"}), on="pwsid", how="left")
+    # Preliminary service-area boundary match only. The FINAL geometry_source_tier and
+    # spatial_confidence are computed downstream in build_features.build_geography, where
+    # service-area matches and county-centroid fallback are both resolved.
+    if not service.empty and "geometry_source_tier" in service.columns:
+        service_match = service[["pwsid", "geometry_source_tier"]].drop_duplicates("pwsid")
+    else:
+        service_match = pd.DataFrame(columns=["pwsid", "geometry_source_tier"])
+    master = master.merge(
+        service_match.rename(columns={"geometry_source_tier": "service_area_boundary_tier"}),
+        on="pwsid",
+        how="left",
+    )
 
     master["state"] = "OH"
     master["county"] = master["county"].fillna("")
@@ -118,9 +128,6 @@ def build_master() -> pd.DataFrame:
     master["system_size_class"] = master["population_served"].map(size_class)
     master["is_small_system"] = master["population_served"].le(3300).fillna(False)
     master["is_very_small_system"] = master["population_served"].le(500).fillna(False)
-    master["spatial_confidence"] = master["service_area_spatial_confidence"].fillna(
-        master["county_fips"].notna().map(lambda value: "low" if value else "unknown")
-    )
 
     def flags(row: pd.Series) -> str:
         values = []
@@ -128,8 +135,9 @@ def build_master() -> pd.DataFrame:
             values.append("missing_population_served")
         if not row["county"]:
             values.append("missing_county")
-        if row["spatial_confidence"] in {"low", "unknown"}:
-            values.append(f"{row['spatial_confidence']}_spatial_confidence")
+        # Preliminary geography signal; final spatial confidence is set in build_geography.
+        if pd.isna(row.get("service_area_boundary_tier")):
+            values.append("missing_geography" if not row["county"] else "no_service_area_boundary")
         if row["activity_status"] != "Active":
             values.append("inactive_or_non_active_status")
         return " | ".join(values) if values else "none"
@@ -154,7 +162,6 @@ def build_master() -> pd.DataFrame:
         "is_very_small_system",
         "first_seen_date",
         "last_seen_date",
-        "spatial_confidence",
         "data_quality_flags",
     ]
     output = master[keep].sort_values("pwsid").reset_index(drop=True)

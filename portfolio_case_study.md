@@ -76,18 +76,28 @@ System size context:
 - Medium: 210
 - Large: 207
 
-Spatial confidence:
+Geometry source (mapping precision):
 
-- High: 36
-- Medium: 1,041
-- Low: 15,070
-- Unknown: 192
+- System-Sourced Service Area (EPA system/state/local polygon): 207
+- Modeled Service Area (EPA-modeled polygon): 870
+- Approximate Location (county centroid fallback): 15,070
+- Unmatched Geography: 192
 
-The large share of low-confidence geography is an important analytical finding: many systems can be scored from SDWA records, but not all can be mapped with verified service-area boundaries.
+The large share of approximate geography is an important analytical finding: many systems can be scored from SDWA records, but only 1,077 (6.6%) have an EPA service-area polygon. Modeled boundaries are treated as screening context, not verified service-area determinations.
+
+### Sample findings
+
+These observations come directly from the scored Ohio prototype:
+
+1. **County concentration.** Columbiana County had the largest number of high-review records (13), followed by Mahoning and Summit counties (11 each). High-review records are spread across many counties rather than concentrated in a single metro area.
+2. **Size pattern in the highest tiers.** Every one of the 188 High Review records was a small, very small, or medium system; no large system reached the High Review tier. Small systems also showed the highest high-review rate (2.5%, versus 1.0% for very small, 1.9% for medium, and 0% for large), consistent with the project's focus on smaller systems that often have less staff and grant capacity.
+3. **Geometry source is tracked, not hidden.** Only 1,077 of 16,339 records (6.6%) have an EPA service-area polygon (207 system-sourced, 870 modeled); the other 15,262 fall back to county centroids or are unmatched and are labeled "Approximate Location." Each system carries an explicit geometry-source tier and confidence so modeled or centroid placement is never overinterpreted as a verified service-area boundary.
+
+These are screening observations from public data, not regulatory findings about any individual system.
 
 ## 10. Validation and Limitations
 
-Validation passed 13 checks, including duplicate PWSID detection, score bounds, required columns, valid risk tiers, valid spatial confidence, valid funding match confidence, and row-count consistency.
+Validation passed 19 checks (expanded from 13), including duplicate PWSID detection, score bounds, required columns, valid risk tiers, valid geometry source tiers and spatial confidence, valid funding match confidence, row-count consistency, and a geometry suite: one boundary geometry per PWSID after dissolve, boundary count reconciliation to the EPA source, simplified-geometry area-delta within threshold, parseable GeoJSON for matched systems, and a valid map-boundaries FeatureCollection.
 
 Limitations:
 

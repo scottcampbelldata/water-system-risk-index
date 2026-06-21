@@ -21,7 +21,7 @@
     <main class="app-shell">
       <section class="summary-grid" aria-label="Executive summary">
         <div class="metric">
-          <span>Total systems</span>
+          <span>Total records</span>
           <strong id="metricTotal">--</strong>
         </div>
         <div class="metric">
@@ -33,12 +33,31 @@
           <strong id="metricCritical">--</strong>
         </div>
         <div class="metric">
-          <span>Low spatial confidence</span>
-          <strong id="metricSpatial">--</strong>
-        </div>
-        <div class="metric">
           <span>Validation checks passed</span>
           <strong id="metricValidation">--</strong>
+        </div>
+      </section>
+
+      <section class="geography-grid" aria-label="Geography coverage">
+        <div class="metric">
+          <span>System-sourced service areas</span>
+          <strong id="geoVerified">--</strong>
+        </div>
+        <div class="metric">
+          <span>Modeled service areas</span>
+          <strong id="geoModeled">--</strong>
+        </div>
+        <div class="metric">
+          <span>Approximate locations</span>
+          <strong id="geoApproximate">--</strong>
+        </div>
+        <div class="metric">
+          <span>Unmatched geography</span>
+          <strong id="geoUnmatched">--</strong>
+        </div>
+        <div class="metric">
+          <span>Source protection overlay</span>
+          <strong id="geoSourceProtection" class="metric-status">--</strong>
         </div>
       </section>
 
@@ -62,8 +81,8 @@
           <select id="sizeFilter"></select>
         </label>
         <label>
-          Spatial confidence
-          <select id="spatialFilter"></select>
+          Geography
+          <select id="geographyFilter"></select>
         </label>
       </section>
 
@@ -72,7 +91,7 @@
           <div class="panel-header">
             <div>
               <h2>Statewide Screening Map</h2>
-              <p id="mapSubtitle">Zoomable street map with public water systems plotted by best available coordinates.</p>
+              <p id="mapSubtitle">Zoomable street map with public water system records plotted by best available coordinates.</p>
             </div>
             <div class="map-tools">
               <label class="toggle-label">
@@ -89,7 +108,7 @@
           <div class="panel-header">
             <div>
               <h2>Risk Tiers</h2>
-              <p>Current filtered system count by review tier.</p>
+              <p>Current filtered record count by review tier.</p>
             </div>
           </div>
           <div class="chart" id="tierChart"></div>
@@ -99,7 +118,7 @@
           <div class="panel-header">
             <div>
               <h2>Top Counties</h2>
-              <p>Counties with the most high-review systems.</p>
+              <p>Counties with the most high-review records.</p>
             </div>
           </div>
           <div class="chart" id="countyChart"></div>
@@ -120,7 +139,7 @@
         <div class="panel-header">
           <div>
             <h2>Ranked Review List</h2>
-            <p id="tableCount">-- systems shown</p>
+            <p id="tableCount">-- records shown</p>
           </div>
           <div class="pager">
             <button class="ghost-button" id="prevPage" type="button">Prev</button>
@@ -172,6 +191,6 @@
     <div class="tooltip" id="tooltip" hidden></div>
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=api-1"></script>
+    <script src="app.js?v=geo-1"></script>
   </body>
 </html>
