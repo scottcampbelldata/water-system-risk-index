@@ -1,0 +1,36 @@
+{
+  "note": "SVI is an intended input (equity weighting) and a fairness axis. This tool is for directing support/funding, not enforcement targeting.",
+  "correlations_with_svi": {
+    "overall_score": 0.3426,
+    "compliance_component_only": 0.0317,
+    "score_excluding_vulnerability_input": -0.0966
+  },
+  "high_review_mean_svi": 0.4574,
+  "overall_mean_svi": 0.3407,
+  "by_svi_quartile": [
+    {
+      "quartile": "Q1 (least)",
+      "systems": 4136,
+      "high_review_rate": 0.0039,
+      "mean_score": 22.91
+    },
+    {
+      "quartile": "Q2",
+      "systems": 4458,
+      "high_review_rate": 0.0076,
+      "mean_score": 24.72
+    },
+    {
+      "quartile": "Q3",
+      "systems": 3685,
+      "high_review_rate": 0.0152,
+      "mean_score": 27.11
+    },
+    {
+      "quartile": "Q4 (most)",
+      "systems": 3868,
+      "high_review_rate": 0.0212,
+      "mean_score": 31.46
+    }
+  ]
+}

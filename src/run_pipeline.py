@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+from backtest import run_backtest
 from build_features import build_all_features
 from clean_water_systems import build_master
 from download_data import main as download_main
 from export_powerbi import export_powerbi
+from fairness_audit import run_fairness_audit
 from load_drought import load_drought
 from load_sdwis import load_sdwis
 from load_service_areas import load_service_areas
 from load_svi import load_svi
 from load_swap_areas import load_swap_areas
 from score_risk import score_risk
+from sensitivity import run_sensitivity
 from validate_outputs import validate_outputs
 
 
@@ -37,6 +40,10 @@ def run_pipeline() -> None:
     score_risk()
     print("Validating outputs...")
     validate_outputs()
+    print("Running model validation (backtest, sensitivity, fairness)...")
+    run_backtest()
+    run_sensitivity()
+    run_fairness_audit()
     print("Exporting Power BI files...")
     export_powerbi()
     print("Pipeline complete.")

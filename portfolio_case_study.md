@@ -101,13 +101,21 @@ These are screening observations from public data, not regulatory findings about
 
 Validation passed 22 checks (expanded from 13), including duplicate PWSID detection, score bounds, required columns, valid risk tiers, valid geometry source tiers and spatial confidence, valid funding match confidence, row-count consistency, a geometry suite (one boundary geometry per PWSID after dissolve, boundary count reconciliation to the EPA source, simplified-geometry area-delta within threshold, parseable GeoJSON for matched systems, a valid map-boundaries FeatureCollection), and a SWAP suite (parseable source-water protection geometry, count reconciliation, and per-system coverage).
 
+### Model validation and robustness
+
+The score is not just asserted — it is tested. See [`docs/model_card.md`](docs/model_card.md).
+
+- **Backtest (does it predict?).** Freezing a 2023-12-31 cutoff, recomputing the time-varying components with no leakage, and measuring subsequent health-based violations over the next 24 months: the score reaches **ROC AUC 0.74**, and the **top 100 systems were ~9.7× more likely** than the 2.07% base rate to have a subsequent health-based violation. Honestly, the score roughly **ties** a prior-violation-count baseline (AUC 0.735); its value is the combined, explainable, equity-aware lens rather than out-predicting a violations counter.
+- **Sensitivity (are the weights fragile?).** Across 500 trials perturbing every weight ±20%, the ranking holds: **Spearman 0.95**, **top-100 retention 0.95**, and **review tiers never changed**. Vulnerability and compliance drive the ranking; the funding component currently adds no signal (no SRF data staged).
+- **Fairness (is it just re-flagging vulnerable areas?).** The objective compliance signal is **uncorrelated with SVI (0.03)**, and the score with the SVI input removed is essentially uncorrelated (−0.10). The model's SVI tilt is the *intentional equity weighting* for directing support — not a covert demographic proxy — which is why the tool is scoped to support/funding, not enforcement.
+
 Limitations:
 
 - ECHO SDWA data are not real-time.
 - County-level SVI and drought are fallback context, not household-level exposure.
 - County centroid mapping is suitable for screening only.
 - Unmatched SRF records do not prove a system received no funding.
-- Model weights are analytical assumptions and should be reviewed with subject-matter experts before operational use.
+- Model weights are analytical assumptions; they are robust (above) but should be reviewed with subject-matter experts before operational use.
 
 ## 11. What I Would Improve Next
 
