@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    name: Unit tests + validation gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-api.txt
+      - name: Run unit tests
+        run: python -m pytest -q
+      - name: Validation gate (committed data quality report must be all-pass)
+        run: |
+          python - <<'PY'
+          import pandas as pd, sys
+          d = pd.read_csv("data/processed/data_quality_report.csv")
+          failed = d[d["status"] != "pass"]
+          print(f"{(d['status']=='pass').sum()}/{len(d)} checks pass")
+          if len(failed):
+              print(failed.to_string()); sys.exit(1)
+          PY
+
+  api-integration:
+    name: API integration (Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: water_app
+          POSTGRES_PASSWORD: water_app
+          POSTGRES_DB: water_risk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U water_app"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: water_app
+      PGPASSWORD: water_app
+      PGDATABASE: water_risk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-api.txt
+      - name: Create schema and seed Postgres
+        run: |
+          python -m waterapi.cli init-db
+          python -m waterapi.cli load
+      - name: Smoke-test the API
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from waterapi.api.main import app
+          c = TestClient(app)
+          assert c.get("/health").json()["status"] == "ok"
+          md = c.get("/metadata").json()
+          assert md["validationPassCount"] == md["validationCheckCount"], "validation not all-pass"
+          s = c.get("/summary").json()
+          assert s["total"] == 16339, s["total"]
+          g = s["geography"]
+          assert g["verifiedServiceAreas"] + g["modeledServiceAreas"] + g["approximateLocations"] + g["unmatchedGeography"] == 16339
+          assert len(c.get("/map/boundaries").json()["features"]) == 1077
+          assert c.get("/systems", params={"page_size": 1}).json()["total"] == 16339
+          print("API smoke test passed")
+          PY

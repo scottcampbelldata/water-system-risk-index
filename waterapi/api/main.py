@@ -20,10 +20,15 @@ from sqlalchemy import text
 from waterapi import __version__
 from waterapi.config import settings
 from waterapi.db.engine import get_engine
+from waterapi.observability import RequestLoggingMiddleware, metrics, setup_logging
 
+setup_logging(settings.water_log_level)
 logger = logging.getLogger("waterapi")
 
 app = FastAPI(title="Water System Risk Index API", version=__version__)
+
+# Per-request structured logging + in-memory metrics (see GET /metrics).
+app.add_middleware(RequestLoggingMiddleware)
 
 # Compress responses (notably the /map/boundaries GeoJSON FeatureCollection).
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -159,6 +164,12 @@ def _filters(
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"status": "ok", "version": __version__}
+
+
+@app.get("/metrics")
+def get_metrics() -> dict[str, Any]:
+    """Lightweight request metrics (counts, status classes, p50/p95 latency by route)."""
+    return metrics.snapshot()
 
 
 @app.get("/metadata")
