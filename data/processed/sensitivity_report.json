@@ -1,0 +1,51 @@
+{
+  "n_trials": 500,
+  "weight_perturbation": "+/-20%",
+  "top_k": 100,
+  "monte_carlo": {
+    "spearman_rank_correlation": {
+      "mean": 0.9938,
+      "min": 0.9713,
+      "p05": 0.9815
+    },
+    "top100_retention": {
+      "mean": 0.9475,
+      "min": 0.85,
+      "p05": 0.89
+    },
+    "tier_change_rate": {
+      "mean": 0.0,
+      "max": 0.0
+    }
+  },
+  "component_influence_when_removed": {
+    "compliance_risk_component": {
+      "spearman_vs_base": 0.9691,
+      "top100_retained": 0.28
+    },
+    "enforcement_risk_component": {
+      "spearman_vs_base": 0.9866,
+      "top100_retained": 0.95
+    },
+    "vulnerability_component": {
+      "spearman_vs_base": 0.5879,
+      "top100_retained": 0.52
+    },
+    "drought_component": {
+      "spearman_vs_base": 0.7827,
+      "top100_retained": 0.79
+    },
+    "funding_gap_component": {
+      "spearman_vs_base": 1.0,
+      "top100_retained": 1.0
+    },
+    "small_system_component": {
+      "spearman_vs_base": 0.972,
+      "top100_retained": 0.8
+    },
+    "data_quality_penalty": {
+      "spearman_vs_base": 0.9998,
+      "top100_retained": 0.98
+    }
+  }
+}

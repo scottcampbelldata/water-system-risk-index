@@ -110,6 +110,7 @@ Current run produced:
 - 7 processed analytical outputs
 - 9 Power BI-ready CSV exports
 - 22 validation checks, all passing (expanded from 13 to cover geometry source, dissolve, simplification quality, and SWAP)
+- Model validation: backtest (ROC AUC 0.74, ~9.7x lift in the top 100), sensitivity (tiers stable under +/-20% weight perturbation), and a fairness audit — see [`docs/model_card.md`](docs/model_card.md)
 - Portfolio charts in `outputs/charts/`
 
 Run the complete pipeline:
