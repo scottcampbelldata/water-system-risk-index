@@ -158,6 +158,7 @@ processed CSVs ──(src/export_web_app_data.py)──> data/processed/app_data
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /health` | health check |
+| `GET /metrics` | in-memory request metrics (counts, status classes, p50/p95 latency by route) |
 | `GET /metadata` | metadata block, validation list, county list |
 | `GET /summary` | filter-aware metric + chart aggregates (total, geography breakdown, tier counts, top counties) |
 | `GET /tiers` | statewide tier counts |
@@ -216,6 +217,16 @@ python -m waterapi.cli init-db  # create tables + indexes (idempotent)
 python -m waterapi.cli load     # seed Postgres from data/processed/app_data.json
 python -m waterapi.cli serve    # uvicorn on http://127.0.0.1:8000
 ```
+
+Or the whole stack (Postgres + API, seeded) with Docker:
+
+```bash
+docker compose up --build      # API on http://localhost:8000
+```
+
+CI (`.github/workflows/ci.yml`) runs the unit tests, gates on the data-quality
+report being all-pass, and spins up Postgres to seed and smoke-test the API on every
+push/PR. The API emits structured JSON request logs and exposes `GET /metrics`.
 
 Map data (`web/data/ohio_map.json`, `web/data/ohio_counties.geojson`) stays as a
 static asset — both are well under 25 MiB and the live map only needs API marker

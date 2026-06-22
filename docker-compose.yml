@@ -1,0 +1,46 @@
+# Full local stack: Postgres + the FastAPI API, seeded on first start.
+#   docker compose up --build
+#   open http://localhost:8000/health
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: water_app
+      POSTGRES_PASSWORD: ${PGPASSWORD:-water_app}
+      POSTGRES_DB: water_risk
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U water_app -d water_risk"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: create schema and load seeds, then exit.
+  seed:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      PGHOST: db
+      PGUSER: water_app
+      PGPASSWORD: ${PGPASSWORD:-water_app}
+      PGDATABASE: water_risk
+    command: sh -c "python -m waterapi.cli init-db && python -m waterapi.cli load"
+
+  api:
+    build: .
+    depends_on:
+      seed: { condition: service_completed_successfully }
+    environment:
+      PGHOST: db
+      PGUSER: water_app
+      PGPASSWORD: ${PGPASSWORD:-water_app}
+      PGDATABASE: water_risk
+      WATER_CORS_ORIGINS: ${WATER_CORS_ORIGINS:-https://water-risk.example.com}
+    ports: ["8000:8000"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
