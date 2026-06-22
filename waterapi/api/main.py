@@ -85,6 +85,21 @@ COMPONENT_KEYS = {
 }
 
 
+def _bbox_clause(bbox: str | None, alias: str) -> tuple[str, dict[str, Any]]:
+    """Parse 'minLon,minLat,maxLon,maxLat' into a bounding-box overlap filter."""
+    if not bbox:
+        return "", {}
+    try:
+        min_lon, min_lat, max_lon, max_lat = (float(x) for x in bbox.split(","))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="bbox must be 'minLon,minLat,maxLon,maxLat'")
+    clause = (
+        f" AND {alias}.min_lon <= :qmaxlon AND {alias}.max_lon >= :qminlon"
+        f" AND {alias}.min_lat <= :qmaxlat AND {alias}.max_lat >= :qminlat"
+    )
+    return clause, {"qminlon": min_lon, "qminlat": min_lat, "qmaxlon": max_lon, "qmaxlat": max_lat}
+
+
 def _system_to_dict(row: Any) -> dict[str, Any]:
     """Map a water_systems row to the camelCase shape the frontend expects."""
     m = row._mapping
@@ -205,6 +220,62 @@ def tiers() -> list[dict[str, Any]]:
         ).mappings().all()
     counts = {row["tier"]: row["systems"] for row in rows}
     return [{"tier": tier, "systems": int(counts.get(tier, 0))} for tier in TIER_ORDER]
+
+
+@app.get("/trends")
+def trends() -> dict[str, Any]:
+    """Change between the two most recent scoring snapshots: how many systems newly
+    escalated to a higher-priority tier, with the largest score increases. Returns a
+    graceful message until a second snapshot has been loaded."""
+    engine = get_engine()
+    with engine.connect() as conn:
+        dates = conn.execute(
+            text("SELECT DISTINCT score_date FROM score_snapshots ORDER BY score_date DESC LIMIT 2")
+        ).scalars().all()
+        if len(dates) < 2:
+            return {
+                "snapshots": len(dates),
+                "latest": str(dates[0]) if dates else None,
+                "message": "Trends become available once a second scoring snapshot is loaded.",
+            }
+        latest, prior = dates[0], dates[1]
+        rows = conn.execute(
+            text(
+                """
+                SELECT l.pwsid, w.name, w.county, l.score AS score_now, p.score AS score_prev,
+                       l.tier AS tier_now, p.tier AS tier_prev
+                FROM score_snapshots l
+                JOIN score_snapshots p ON l.pwsid = p.pwsid AND p.score_date = :prior
+                LEFT JOIN water_systems w ON w.pwsid = l.pwsid
+                WHERE l.score_date = :latest
+                """
+            ),
+            {"latest": latest, "prior": prior},
+        ).mappings().all()
+
+    tier_rank = {tier: i for i, tier in enumerate(TIER_ORDER)}
+    escalated = [r for r in rows if tier_rank.get(r["tier_now"], 99) < tier_rank.get(r["tier_prev"], 99)]
+    deescalated = [r for r in rows if tier_rank.get(r["tier_now"], 99) > tier_rank.get(r["tier_prev"], 99)]
+    movers = sorted(rows, key=lambda r: (r["score_now"] or 0) - (r["score_prev"] or 0), reverse=True)[:10]
+    return {
+        "snapshots": len(dates),
+        "latest": str(latest),
+        "prior": str(prior),
+        "compared": len(rows),
+        "newly_escalated": len(escalated),
+        "de_escalated": len(deescalated),
+        "top_score_increases": [
+            {
+                "pwsid": r["pwsid"],
+                "name": r["name"],
+                "county": r["county"],
+                "scoreDelta": round((r["score_now"] or 0) - (r["score_prev"] or 0), 2),
+                "tierFrom": r["tier_prev"],
+                "tierTo": r["tier_now"],
+            }
+            for r in movers
+        ],
+    }
 
 
 @app.get("/summary")
@@ -405,13 +476,17 @@ def map_boundaries(
     tier: str | None = None,
     size: str | None = None,
     geography: str | None = None,
+    bbox: str | None = None,
 ) -> dict[str, Any]:
     """GeoJSON FeatureCollection of simplified service-area polygons for the filtered set.
 
     Only systems with a service-area boundary (verified/modeled tiers) are returned.
-    Responses are gzip-compressed by middleware; payload size is logged.
+    Pass `bbox=minLon,minLat,maxLon,maxLat` to fetch only polygons in the current map
+    viewport. Responses are gzip-compressed by middleware; payload size is logged.
     """
     where, params = _filters(q, county, tier, size, geography)
+    bbox_clause, bbox_params = _bbox_clause(bbox, "b")
+    params = {**params, **bbox_params}
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(
@@ -423,6 +498,7 @@ def map_boundaries(
                     SELECT pwsid, name, county, tier, size_class, geometry_source_tier
                     FROM water_systems{where}
                 ) s ON b.pwsid = s.pwsid
+                WHERE TRUE{bbox_clause}
                 ORDER BY s.tier
                 """
             ),
@@ -457,17 +533,21 @@ def map_swap(
     size: str | None = None,
     geography: str | None = None,
     kind: str | None = None,
+    bbox: str | None = None,
 ) -> dict[str, Any]:
     """GeoJSON FeatureCollection of Ohio EPA source-water protection (SWAP) areas
     for systems in the current filter. Source-protection areas (where supply is
     protected) are distinct from service-area boundaries (who receives water).
-    Off by default on the map and loaded on demand; gzip-compressed.
+    Off by default on the map and loaded on demand; gzip-compressed. Pass `bbox` to
+    fetch only areas in the current map viewport.
     """
     where, params = _filters(q, county, tier, size, geography)
     kind_clause = ""
     if kind:
         kind_clause = " AND a.area_kind = :kind"
         params = {**params, "kind": kind}
+    bbox_clause, bbox_params = _bbox_clause(bbox, "a")
+    params = {**params, **bbox_params}
     engine = get_engine()
     with engine.connect() as conn:
         rows = conn.execute(
@@ -476,7 +556,7 @@ def map_swap(
                 SELECT a.pwsid, a.area_kind, a.sys_name, a.area_sqkm, a.geometry
                 FROM water_system_swap_areas a
                 JOIN (SELECT pwsid FROM water_systems{where}) w ON a.pwsid = w.pwsid
-                WHERE TRUE{kind_clause}
+                WHERE TRUE{kind_clause}{bbox_clause}
                 ORDER BY a.area_kind
                 """
             ),

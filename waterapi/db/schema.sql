@@ -79,9 +79,14 @@ CREATE TABLE IF NOT EXISTS water_system_boundaries (
     boundary_provider text,
     match_method      text,
     area_sqkm         double precision,
+    min_lon           double precision,
+    min_lat           double precision,
+    max_lon           double precision,
+    max_lat           double precision,
     geometry          jsonb NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_boundaries_type ON water_system_boundaries (boundary_type);
+CREATE INDEX IF NOT EXISTS idx_boundaries_bbox ON water_system_boundaries (min_lon, max_lon, min_lat, max_lat);
 
 -- Phase 2: Ohio EPA source-water protection (SWAP) areas. These describe where a
 -- system's water supply is protected (around wells/intakes) and are kept separate
@@ -93,11 +98,28 @@ CREATE TABLE IF NOT EXISTS water_system_swap_areas (
     sys_name  text,
     county    text,
     area_sqkm double precision,
+    min_lon   double precision,
+    min_lat   double precision,
+    max_lon   double precision,
+    max_lat   double precision,
     geometry  jsonb NOT NULL,
     PRIMARY KEY (pwsid, area_kind)
 );
 CREATE INDEX IF NOT EXISTS idx_swap_pwsid ON water_system_swap_areas (pwsid);
 CREATE INDEX IF NOT EXISTS idx_swap_kind ON water_system_swap_areas (area_kind);
+CREATE INDEX IF NOT EXISTS idx_swap_bbox ON water_system_swap_areas (min_lon, max_lon, min_lat, max_lat);
+
+-- Temporal layer: one score/tier row per system per scoring run. Unlike the other
+-- tables this is NOT truncated on load; snapshots accumulate so trends (newly
+-- escalated systems, score deltas) can be computed across refreshes.
+CREATE TABLE IF NOT EXISTS score_snapshots (
+    score_date date NOT NULL,
+    pwsid      text NOT NULL,
+    score      double precision,
+    tier       text,
+    PRIMARY KEY (score_date, pwsid)
+);
+CREATE INDEX IF NOT EXISTS idx_snapshots_date ON score_snapshots (score_date);
 
 -- The data-quality / validation check results.
 CREATE TABLE IF NOT EXISTS validation_checks (

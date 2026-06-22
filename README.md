@@ -164,6 +164,7 @@ processed CSVs ──(src/export_web_app_data.py)──> data/processed/app_data
 | `GET /tiers` | statewide tier counts |
 | `GET /map/boundaries` | gzip GeoJSON FeatureCollection of simplified service-area polygons for the filtered set |
 | `GET /map/swap` | gzip GeoJSON FeatureCollection of SWAP source-water protection areas (filtered; optional `kind`) |
+| `GET /trends` | change between the two most recent scoring snapshots (newly escalated systems, largest score increases) |
 | `GET /systems` | filtered / sorted / paginated systems + total count |
 | `GET /systems/{pwsid}` | single system detail |
 | `GET /map/points` | lightweight map markers for the current filter |
@@ -227,6 +228,25 @@ docker compose up --build      # API on http://localhost:8000
 CI (`.github/workflows/ci.yml`) runs the unit tests, gates on the data-quality
 report being all-pass, and spins up Postgres to seed and smoke-test the API on every
 push/PR. The API emits structured JSON request logs and exposes `GET /metrics`.
+
+### Scaling and operations
+
+- **Config-driven state** — the pipeline is not hardcoded to Ohio. Set the target
+  state(s) via `WATER_STATES` (e.g. `WATER_STATES=OH,IN`) or `target_states` in
+  `config/sources.yaml`; FIPS/abbreviation mapping lives in `src/state_config.py`.
+  Adding a state is a config change plus staging that state's source data.
+- **Viewport loading** — `GET /map/boundaries` and `GET /map/swap` accept
+  `bbox=minLon,minLat,maxLon,maxLat`; the frontend fetches only polygons in the
+  current map view and refetches on pan/zoom, so payloads stay small as data grows.
+- **PostGIS path** — geometry is stored as GeoJSON in `jsonb` (no PostGIS needed for
+  the prototype). For national scale, `waterapi/db/schema_postgis.sql` adds real
+  geometry columns + GiST indexes for `ST_Intersects`-based queries; true vector
+  tiles (PMTiles via tippecanoe) are the documented production tiling path.
+- **Temporal snapshots** — each load appends a per-system score/tier snapshot
+  (`score_snapshots`, not truncated); `GET /trends` reports newly escalated systems
+  and the largest score increases once a second snapshot exists.
+- **Model validation** — `src/backtest.py`, `src/sensitivity.py`,
+  `src/fairness_audit.py`, summarized in `docs/model_card.md`.
 
 Map data (`web/data/ohio_map.json`, `web/data/ohio_counties.geojson`) stays as a
 static asset — both are well under 25 MiB and the live map only needs API marker

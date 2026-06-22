@@ -9,6 +9,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import MultiPolygon, Polygon
 
+from state_config import target_state_fips
 from utils import REPO_ROOT
 
 
@@ -89,7 +90,7 @@ def export_web_map_data() -> Path:
     )
 
     counties = gpd.read_file(f"zip://{counties_path}")
-    counties = counties[counties["STATEFP"].eq("39")].to_crs(5070)
+    counties = counties[counties["STATEFP"].isin(target_state_fips())].to_crs(5070)
     counties["geometry"] = counties.geometry.simplify(700, preserve_topology=True)
     counties = counties.merge(summary, left_on="GEOID", right_on="county_fips", how="left")
     counties["county_fips"] = counties["GEOID"]

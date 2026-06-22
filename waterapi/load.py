@@ -70,20 +70,49 @@ VALIDATION_INSERT = text(
 
 METADATA_INSERT = text("INSERT INTO app_metadata (id, data) VALUES (1, :data)")
 
+SNAPSHOT_INSERT = text(
+    "INSERT INTO score_snapshots (score_date, pwsid, score, tier) VALUES (:score_date, :pwsid, :score, :tier)"
+)
+
 BOUNDARY_INSERT = text(
     """
-    INSERT INTO water_system_boundaries (pwsid, boundary_type, boundary_provider, match_method, area_sqkm, geometry)
-    VALUES (:pwsid, :boundary_type, :boundary_provider, :match_method, :area_sqkm, CAST(:geometry AS jsonb))
+    INSERT INTO water_system_boundaries
+        (pwsid, boundary_type, boundary_provider, match_method, area_sqkm, min_lon, min_lat, max_lon, max_lat, geometry)
+    VALUES (:pwsid, :boundary_type, :boundary_provider, :match_method, :area_sqkm,
+            :min_lon, :min_lat, :max_lon, :max_lat, CAST(:geometry AS jsonb))
     """
 )
 
 SWAP_INSERT = text(
     """
-    INSERT INTO water_system_swap_areas (pwsid, area_kind, sys_name, county, area_sqkm, geometry)
-    VALUES (:pwsid, :area_kind, :sys_name, :county, :area_sqkm, CAST(:geometry AS jsonb))
+    INSERT INTO water_system_swap_areas
+        (pwsid, area_kind, sys_name, county, area_sqkm, min_lon, min_lat, max_lon, max_lat, geometry)
+    VALUES (:pwsid, :area_kind, :sys_name, :county, :area_sqkm,
+            :min_lon, :min_lat, :max_lon, :max_lat, CAST(:geometry AS jsonb))
     ON CONFLICT (pwsid, area_kind) DO NOTHING
     """
 )
+
+
+def _bbox(geometry: dict | None) -> dict:
+    """Bounding box (min/max lon/lat) of a GeoJSON Polygon/MultiPolygon."""
+    lons: list[float] = []
+    lats: list[float] = []
+
+    def walk(coords):
+        if isinstance(coords, (list, tuple)):
+            if coords and isinstance(coords[0], (int, float)):
+                lons.append(coords[0])
+                lats.append(coords[1])
+            else:
+                for c in coords:
+                    walk(c)
+
+    if geometry:
+        walk(geometry.get("coordinates"))
+    if not lons:
+        return {"min_lon": None, "min_lat": None, "max_lon": None, "max_lat": None}
+    return {"min_lon": min(lons), "min_lat": min(lats), "max_lon": max(lons), "max_lat": max(lats)}
 
 
 def _system_row(system: dict) -> dict:
@@ -163,6 +192,7 @@ def load(seed_path: Path | None = None) -> int:
                 "match_method": entry.get("matchMethod"),
                 "area_sqkm": entry.get("areaSqKm"),
                 "geometry": json.dumps(entry.get("geometry"), separators=(",", ":")),
+                **_bbox(entry.get("geometry")),
             }
             for pwsid, entry in boundaries.items()
         ]
@@ -180,6 +210,7 @@ def load(seed_path: Path | None = None) -> int:
                 "county": area.get("county"),
                 "area_sqkm": area.get("areaSqKm"),
                 "geometry": json.dumps(area.get("geometry"), separators=(",", ":")),
+                **_bbox(area.get("geometry")),
             }
             for area in swap
         ]
@@ -226,6 +257,15 @@ def load(seed_path: Path | None = None) -> int:
         conn.execute(METADATA_INSERT, {"data": json.dumps(metadata)})
         if validation_rows:
             conn.execute(VALIDATION_INSERT, validation_rows)
+
+        # Temporal snapshot: upsert this run's scores by score_date (accumulates).
+        score_date = metadata.get("scoreDate")
+        if score_date and systems:
+            conn.execute(text("DELETE FROM score_snapshots WHERE score_date = :d"), {"d": score_date})
+            conn.execute(
+                SNAPSHOT_INSERT,
+                [{"score_date": score_date, "pwsid": s["pwsid"], "score": s.get("score"), "tier": s.get("tier")} for s in systems],
+            )
 
     print(
         f"Loaded {len(system_rows):,} systems, {len(boundary_rows):,} boundaries, "

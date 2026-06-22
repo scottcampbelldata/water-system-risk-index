@@ -391,6 +391,12 @@ function initializeMap() {
     if (event.layer === state.swapLayer) state.swapLayer.clearLayers();
     renderOverlayLegend();
   });
+  // Refetch the active overlays for the new viewport when the map pans/zooms.
+  state.map.on("moveend", debounce(() => {
+    const base = filterParams();
+    loadBoundaries(state.loadToken, base);
+    loadSwap(state.loadToken, base);
+  }, 350));
   renderOverlayLegend();
 
   // County boundaries are a static asset, loaded once and toggled off by default.
@@ -403,10 +409,21 @@ function initializeMap() {
   window.addEventListener("resize", () => state.map.invalidateSize());
 }
 
+// Append the current map viewport as a bbox so only visible polygons are fetched.
+function withBbox(base) {
+  const params = new URLSearchParams(base);
+  if (state.map) {
+    const b = state.map.getBounds();
+    params.set("bbox", [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(n => n.toFixed(4)).join(","));
+  }
+  return params;
+}
+
 async function loadBoundaries(token, base) {
+  if (!state.boundaryLayer || !state.map.hasLayer(state.boundaryLayer)) return;
   try {
-    const collection = await api("/map/boundaries", base);
-    if (token !== state.loadToken || !state.boundaryLayer) return;
+    const collection = await api("/map/boundaries", withBbox(base));
+    if (token !== state.loadToken || !state.map.hasLayer(state.boundaryLayer)) return;
     state.boundaryLayer.clearLayers();
     state.boundaryLayer.addData(collection);
   } catch (error) {
@@ -418,7 +435,7 @@ async function loadBoundaries(token, base) {
 async function loadSwap(token, base) {
   if (!state.swapLayer || !state.map.hasLayer(state.swapLayer)) return;
   try {
-    const collection = await api("/map/swap", base);
+    const collection = await api("/map/swap", withBbox(base));
     if (token !== state.loadToken || !state.map.hasLayer(state.swapLayer)) return;
     state.swapLayer.clearLayers();
     state.swapLayer.addData(collection);

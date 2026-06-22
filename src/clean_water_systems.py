@@ -7,10 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from state_config import STATE_FIPS, target_state_abbrs
 from utils import REPO_ROOT, parse_date_series, parse_submission_quarter, to_numeric, write_dataframe
-
-
-STATE_FIPS = {"OH": "39"}
 
 
 def read_interim(name: str) -> pd.DataFrame:
@@ -49,9 +47,11 @@ def build_geo_lookup(geo: pd.DataFrame) -> pd.DataFrame:
         geo["county_fips_candidate"].str.len().eq(3), pd.NA
     )
 
+    # County-FIPS prefix uses the primary target state (single-state prototype assumption).
+    primary_state_fips = STATE_FIPS[target_state_abbrs()[0]]
     counties = geo[geo["area_type_code"].eq("CN")].copy()
     counties["county"] = counties["county_served"].fillna("").str.title()
-    counties["county_fips"] = STATE_FIPS["OH"] + counties["county_fips_candidate"].fillna("")
+    counties["county_fips"] = primary_state_fips + counties["county_fips_candidate"].fillna("")
     counties.loc[counties["county_fips"].str.len().ne(5), "county_fips"] = pd.NA
     county_summary = (
         counties.sort_values(["pwsid", "submission_sort"], ascending=[True, False])
@@ -118,7 +118,7 @@ def build_master() -> pd.DataFrame:
         how="left",
     )
 
-    master["state"] = "OH"
+    master["state"] = master["pwsid"].str[:2].str.upper().where(master["pwsid"].notna(), target_state_abbrs()[0])
     master["county"] = master["county"].fillna("")
     master["city"] = master["city"].fillna(master.get("city_name", "")).fillna("").str.title()
     master["system_type"] = master["pws_type_code"].map(type_map).fillna(master["pws_type_code"])
