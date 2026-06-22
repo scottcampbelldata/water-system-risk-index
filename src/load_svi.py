@@ -6,6 +6,7 @@ import argparse
 
 import pandas as pd
 
+from state_config import target_state_abbrs
 from utils import REPO_ROOT, standardize_columns, write_dataframe
 
 
@@ -15,7 +16,7 @@ def load_svi() -> pd.DataFrame:
         raise FileNotFoundError(f"Missing SVI county parquet: {raw_path}")
 
     df = standardize_columns(pd.read_parquet(raw_path))
-    df = df[df["st_abbr"].eq("OH")].copy()
+    df = df[df["st_abbr"].isin(target_state_abbrs())].copy()
     df["county_fips"] = df["fips"].astype(str).str.zfill(5)
 
     keep = [

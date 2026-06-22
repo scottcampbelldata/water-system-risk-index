@@ -9,6 +9,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 
+from state_config import target_state_fips
 from geography_tiers import LIMITATION_NOTES, TIER_TO_CONFIDENCE
 from load_srf import summarize_srf
 from utils import REPO_ROOT, clamp, parse_date_series, to_numeric, write_dataframe
@@ -156,7 +157,7 @@ def build_enforcement_summary(master: pd.DataFrame) -> pd.DataFrame:
 
 def county_centroids() -> pd.DataFrame:
     counties = gpd.read_file(f"zip://{REPO_ROOT / 'data' / 'raw' / 'tiger' / 'tl_2025_us_county.zip'}")
-    counties = counties[counties["STATEFP"].eq("39")].copy()
+    counties = counties[counties["STATEFP"].isin(target_state_fips())].copy()
     projected = counties.to_crs(5070)
     centroids = gpd.GeoSeries(projected.geometry.centroid, crs=5070).to_crs(4326)
     return pd.DataFrame(
