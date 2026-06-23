@@ -1,10 +1,10 @@
-# Deployment — Water System Risk Index
+# Deployment - Water System Risk Index
 
 Full-stack layout (mirrors the `grid` app):
 
-- **Frontend** — static bundle in `web/`, hosted on **Cloudflare Pages** at
+- **Frontend** - static bundle in `web/`, hosted on **Cloudflare Pages** at
   `https://water-risk.example.com`.
-- **Backend** — FastAPI + Postgres on the VPS at
+- **Backend** - FastAPI + Postgres on the VPS at
   `https://water-api.example.com`, fronted by nginx + certbot TLS,
   supervised by systemd.
 
@@ -39,7 +39,7 @@ cp .env.example .env
 # edit .env: set PGPASSWORD (and PGHOST/PGUSER/PGDATABASE if different),
 # WATER_API_PORT=8000, WATER_CORS_ORIGINS=https://water-risk.example.com
 ```
-`.env` is gitignored — never commit real credentials.
+`.env` is gitignored - never commit real credentials.
 
 ### Create schema and seed data
 ```bash
@@ -80,11 +80,11 @@ sudo certbot --nginx -d water-api.example.com   # adds HTTPS + redirect
 The frontend is fully static; the only config is the API base URL in
 [`web/config.js`](../web/config.js).
 
-- **Local dev** — leave `apiBase` as `http://localhost:8000`.
-- **Production** — set it to `https://water-api.example.com` before/at deploy.
+- **Local dev** - leave `apiBase` as `http://localhost:8000`.
+- **Production** - set it to `https://water-api.example.com` before/at deploy.
 
 Cloudflare Pages settings:
-- Build command: *(none — static)*
+- Build command: *(none - static)*
 - Output directory: `web`
 
 To inject the production API base without editing the committed file, add a Pages

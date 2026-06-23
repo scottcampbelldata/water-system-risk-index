@@ -66,7 +66,7 @@ boundaries: a service area describes who may receive water, while a SWAP area
 describes where the supply is protected around wells or surface-water intakes.
 Ohio EPA SWAP polygons (groundwater protection areas, inner management zones, and
 inland / Lake Erie / Ohio River surface-water areas) are loaded as a distinct
-overlay — 7,390 dissolved areas covering 3,751 systems — and surfaced per system
+overlay - 7,390 dissolved areas covering 3,751 systems - and surfaced per system
 as a `source_protection_status` of `available` or `none`. Facility points
 (wells/intakes/treatment plants) are deferred: no public Ohio source publishes
 usable coordinates.

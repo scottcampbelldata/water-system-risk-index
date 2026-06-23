@@ -1,4 +1,4 @@
-# Frontend — static dashboard
+# Frontend - static dashboard
 
 Deployable static bundle for the Water System Risk & Funding Priority Index,
 hosted on Cloudflare Pages (`water-risk.example.com`). It no longer bundles
@@ -10,10 +10,10 @@ Deployable files (output directory = `web/`):
 
 - `index.html`
 - `styles.css`
-- `config.js` — sets `window.APP_CONFIG.apiBase`
+- `config.js` - sets `window.APP_CONFIG.apiBase`
 - `app.js`
 - `vendor/leaflet/*`
-- `data/ohio_map.json`, `data/ohio_counties.geojson` — static map assets (well under 25 MiB)
+- `data/ohio_map.json`, `data/ohio_counties.geojson` - static map assets (well under 25 MiB)
 
 ## Configure the API base URL
 

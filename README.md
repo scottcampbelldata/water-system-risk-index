@@ -110,7 +110,7 @@ Current run produced:
 - 7 processed analytical outputs
 - 9 Power BI-ready CSV exports
 - 22 validation checks, all passing (expanded from 13 to cover geometry source, dissolve, simplification quality, and SWAP)
-- Model validation: backtest (ROC AUC 0.74, ~9.7x lift in the top 100), sensitivity (tiers stable under +/-20% weight perturbation), and a fairness audit — see [`docs/model_card.md`](docs/model_card.md)
+- Model validation: backtest (ROC AUC 0.74, ~9.7x lift in the top 100), sensitivity (tiers stable under +/-20% weight perturbation), and a fairness audit - see [`docs/model_card.md`](docs/model_card.md)
 - Portfolio charts in `outputs/charts/`
 
 Run the complete pipeline:
@@ -131,11 +131,11 @@ Power BI import files are in `data/powerbi/`.
 
 The dashboard is deployed as a full-stack app (mirroring the `grid` app):
 
-- **Frontend** — static bundle in [`web/`](web/) on **Cloudflare Pages**
+- **Frontend** - static bundle in [`web/`](web/) on **Cloudflare Pages**
   (`water-risk.example.com`). It fetches everything from the API; it ships no
   data file. The previous 27 MB `app_data.json` is gone from `web/` (it was both a
   Cloudflare 25 MiB/file blocker and a poor upfront-load experience for 16k rows).
-- **Backend** — **FastAPI + Postgres** in [`waterapi/`](waterapi/) on the VPS
+- **Backend** - **FastAPI + Postgres** in [`waterapi/`](waterapi/) on the VPS
   (`water-api.example.com`), behind nginx + certbot, supervised by systemd.
   Filtering, sorting and pagination happen server-side, so the browser pulls only
   what it displays.
@@ -194,11 +194,11 @@ Each record is assigned a geometry-source tier (most to least precise):
 
 Modeled EPA polygons are deliberately **not** labeled "verified."
 
-**Phase 2 — source-water protection (SWAP).** Service-area boundaries (who may
+**Phase 2 - source-water protection (SWAP).** Service-area boundaries (who may
 receive water) are kept semantically separate from **source-water protection
 areas** (where the supply is protected). Ohio EPA SWAP polygons are loaded as a
 distinct overlay (groundwater protection areas, inner management zones, and inland
-/ Lake Erie / Ohio River surface-water areas) — 7,390 dissolved areas covering
+/ Lake Erie / Ohio River surface-water areas) - 7,390 dissolved areas covering
 3,751 scored systems. They are never merged with service areas; a system's
 `sourceProtectionStatus` is `available`/`none` and the overlay is off by default
 (loaded on demand). Facility points (wells/intakes/treatment plants) remain
@@ -231,25 +231,25 @@ push/PR. The API emits structured JSON request logs and exposes `GET /metrics`.
 
 ### Scaling and operations
 
-- **Config-driven state** — the pipeline is not hardcoded to Ohio. Set the target
+- **Config-driven state** - the pipeline is not hardcoded to Ohio. Set the target
   state(s) via `WATER_STATES` (e.g. `WATER_STATES=OH,IN`) or `target_states` in
   `config/sources.yaml`; FIPS/abbreviation mapping lives in `src/state_config.py`.
   Adding a state is a config change plus staging that state's source data.
-- **Viewport loading** — `GET /map/boundaries` and `GET /map/swap` accept
+- **Viewport loading** - `GET /map/boundaries` and `GET /map/swap` accept
   `bbox=minLon,minLat,maxLon,maxLat`; the frontend fetches only polygons in the
   current map view and refetches on pan/zoom, so payloads stay small as data grows.
-- **PostGIS path** — geometry is stored as GeoJSON in `jsonb` (no PostGIS needed for
+- **PostGIS path** - geometry is stored as GeoJSON in `jsonb` (no PostGIS needed for
   the prototype). For national scale, `waterapi/db/schema_postgis.sql` adds real
   geometry columns + GiST indexes for `ST_Intersects`-based queries; true vector
   tiles (PMTiles via tippecanoe) are the documented production tiling path.
-- **Temporal snapshots** — each load appends a per-system score/tier snapshot
+- **Temporal snapshots** - each load appends a per-system score/tier snapshot
   (`score_snapshots`, not truncated); `GET /trends` reports newly escalated systems
   and the largest score increases once a second snapshot exists.
-- **Model validation** — `src/backtest.py`, `src/sensitivity.py`,
+- **Model validation** - `src/backtest.py`, `src/sensitivity.py`,
   `src/fairness_audit.py`, summarized in `docs/model_card.md`.
 
 Map data (`web/data/ohio_map.json`, `web/data/ohio_counties.geojson`) stays as a
-static asset — both are well under 25 MiB and the live map only needs API marker
+static asset - both are well under 25 MiB and the live map only needs API marker
 points.
 
 Full database create + seed + deploy steps (systemd, nginx, certbot, Cloudflare

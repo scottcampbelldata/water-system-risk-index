@@ -197,7 +197,7 @@ def load(seed_path: Path | None = None) -> int:
             for pwsid, entry in boundaries.items()
         ]
 
-    # Phase 2 SWAP source-water protection areas (optional — present once loaded).
+    # Phase 2 SWAP source-water protection areas (optional - present once loaded).
     swap_path = path.parent / "swap_areas.json"
     swap_rows = []
     if swap_path.exists():
