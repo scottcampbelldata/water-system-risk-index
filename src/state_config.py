@@ -3,7 +3,7 @@
 Set the target state(s) via the WATER_STATES environment variable (comma-separated
 USPS abbreviations, e.g. "OH" or "OH,IN,PA") or the `target_states` key in
 config/sources.yaml. Defaults to Ohio. Adding a state becomes a config change plus
-staging that state's source data — no code edits to the pipeline.
+staging that state's source data - no code edits to the pipeline.
 """
 
 from __future__ import annotations

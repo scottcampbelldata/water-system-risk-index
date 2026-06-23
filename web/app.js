@@ -353,7 +353,7 @@ function initializeMap() {
       layer.on("click", () => selectByPwsid(feature.properties.pwsid, false));
     }
   }).addTo(state.map);
-  // Source-water protection areas (where supply is protected) — distinct from
+  // Source-water protection areas (where supply is protected) - distinct from
   // service-area boundaries. Off by default and loaded on demand.
   state.swapLayer = L.geoJSON(null, {
     style: feature => ({
@@ -367,7 +367,7 @@ function initializeMap() {
       layer.bindPopup(`<div class="map-popup"><h3>${feature.properties.name || feature.properties.pwsid}</h3>` +
         `<p><strong>${feature.properties.pwsid}</strong></p>` +
         `<p>${swapKindLabels[feature.properties.areaKind] || feature.properties.areaKind}</p>` +
-        `<p class="muted">Source-water protection area — where the supply is protected, not a service area.</p></div>`);
+        `<p class="muted">Source-water protection area - where the supply is protected, not a service area.</p></div>`);
     }
   });
 
@@ -588,7 +588,7 @@ function renderGeographyEvidence(system) {
       ${geographyEvidenceRow("PWSID match", system.matchMethod ? system.matchMethod.replace("_", " ") : "n/a")}
       ${matched ? geographyEvidenceRow("Service area", `${formatNumber(system.areaSqKm)} km²`) : ""}
       ${geographyEvidenceRow("Spatial confidence", String(system.spatialConfidence || "").replace(/_/g, " "))}
-      ${geographyEvidenceRow("Source protection", system.sourceProtectionStatus === "available" ? `Available — ${prettyKinds(system.sourceProtectionKinds)}` : "None found")}
+      ${geographyEvidenceRow("Source protection", system.sourceProtectionStatus === "available" ? `Available - ${prettyKinds(system.sourceProtectionKinds)}` : "None found")}
       <p class="muted evidence-note">${system.spatialLimitationNote || ""}</p>
     </div>
   `;

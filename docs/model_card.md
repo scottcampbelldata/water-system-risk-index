@@ -1,4 +1,4 @@
-# Model Card — Water System Review-Priority Score
+# Model Card - Water System Review-Priority Score
 
 A concise, evidence-based description of what the model is, how well it works, where
 it is fair, and where it must not be used. Quantitative results are reproducible from
@@ -8,7 +8,7 @@ it is fair, and where it must not be used. Quantitative results are reproducible
 ## Model details
 
 - **Name / version:** Water System Risk & Funding Priority Index, model 0.1.0
-- **Type:** Transparent, explainable weighted-sum screening score (0–100), not a
+- **Type:** Transparent, explainable weighted-sum screening score (0-100), not a
   black-box or trained classifier. Weights are documented in
   `config/scoring_weights.yaml`.
 - **Geography / scope:** Ohio prototype, 16,339 public water system records.
@@ -27,7 +27,7 @@ it is fair, and where it must not be used. Quantitative results are reproducible
 ## Quantitative validation (backtest)
 
 We froze a cutoff of **2023-12-31**, recomputed the time-varying components
-(compliance, enforcement) using only records on or before that date — no leakage —
+(compliance, enforcement) using only records on or before that date - no leakage -
 scored each system, and measured whether high-scored systems had a **subsequent
 health-based violation** in the following 24 months.
 
@@ -38,7 +38,7 @@ health-based violation** in the following 24 months.
 - **Honest comparison:** the model roughly **ties** a simple "prior 36-month
   violation count" baseline (AUC 0.735) and does not beat it on this single outcome.
   The model's value-add is *combining* compliance, enforcement, vulnerability,
-  drought, and funding signals with explainability and an equity lens — not
+  drought, and funding signals with explainability and an equity lens - not
   out-predicting a violations counter. Population-served alone is a weak predictor
   (precision@100 ≈ 6%).
 
@@ -67,7 +67,7 @@ the model merely re-flags vulnerable communities:
 - Overall score vs. SVI correlation: **0.34** (moderate, expected from the input).
 - **Objective compliance component vs. SVI correlation: 0.03 (≈ zero).** Vulnerable
   systems do **not** carry systematically more violations in this data.
-- Score with the vulnerability input removed vs. SVI: **−0.10** (essentially
+- Score with the vulnerability input removed vs. SVI: **-0.10** (essentially
   uncorrelated).
 - High-review rate rises by SVI quartile (0.4% → 2.1%), driven entirely by the
   intentional equity weighting, not by a covert demographic proxy.

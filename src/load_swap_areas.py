@@ -1,4 +1,4 @@
-"""Load Ohio EPA Source Water Assessment & Protection (SWAP) areas — Phase 2.
+"""Load Ohio EPA Source Water Assessment & Protection (SWAP) areas - Phase 2.
 
 These are source-water protection polygons (the area that supplies water to a well
 or surface-water intake), NOT customer service-area boundaries. They are kept

@@ -85,7 +85,7 @@ Geometry source (mapping precision):
 
 The large share of approximate geography is an important analytical finding: many systems can be scored from SDWA records, but only 1,077 (6.6%) have an EPA service-area polygon. Modeled boundaries are treated as screening context, not verified service-area determinations.
 
-A separate **source-water protection (SWAP)** overlay adds Ohio EPA protection polygons — 7,390 areas covering 3,751 systems — kept strictly distinct from service areas: a service area is who may receive water, while a SWAP area is where the supply is protected around wells and intakes. Facility points (wells/intakes/treatment plants) are deferred because no public Ohio source publishes usable coordinates.
+A separate **source-water protection (SWAP)** overlay adds Ohio EPA protection polygons - 7,390 areas covering 3,751 systems - kept strictly distinct from service areas: a service area is who may receive water, while a SWAP area is where the supply is protected around wells and intakes. Facility points (wells/intakes/treatment plants) are deferred because no public Ohio source publishes usable coordinates.
 
 ### Sample findings
 
@@ -103,11 +103,11 @@ Validation passed 22 checks (expanded from 13), including duplicate PWSID detect
 
 ### Model validation and robustness
 
-The score is not just asserted — it is tested. See [`docs/model_card.md`](docs/model_card.md).
+The score is not just asserted - it is tested. See [`docs/model_card.md`](docs/model_card.md).
 
 - **Backtest (does it predict?).** Freezing a 2023-12-31 cutoff, recomputing the time-varying components with no leakage, and measuring subsequent health-based violations over the next 24 months: the score reaches **ROC AUC 0.74**, and the **top 100 systems were ~9.7× more likely** than the 2.07% base rate to have a subsequent health-based violation. Honestly, the score roughly **ties** a prior-violation-count baseline (AUC 0.735); its value is the combined, explainable, equity-aware lens rather than out-predicting a violations counter.
 - **Sensitivity (are the weights fragile?).** Across 500 trials perturbing every weight ±20%, the ranking holds: **Spearman 0.95**, **top-100 retention 0.95**, and **review tiers never changed**. Vulnerability and compliance drive the ranking; the funding component currently adds no signal (no SRF data staged).
-- **Fairness (is it just re-flagging vulnerable areas?).** The objective compliance signal is **uncorrelated with SVI (0.03)**, and the score with the SVI input removed is essentially uncorrelated (−0.10). The model's SVI tilt is the *intentional equity weighting* for directing support — not a covert demographic proxy — which is why the tool is scoped to support/funding, not enforcement.
+- **Fairness (is it just re-flagging vulnerable areas?).** The objective compliance signal is **uncorrelated with SVI (0.03)**, and the score with the SVI input removed is essentially uncorrelated (-0.10). The model's SVI tilt is the *intentional equity weighting* for directing support - not a covert demographic proxy - which is why the tool is scoped to support/funding, not enforcement.
 
 Limitations:
 
