@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 import pandas as pd
 
@@ -22,7 +21,7 @@ def ref_lookup(ref: pd.DataFrame, value_type: str) -> dict[str, str]:
     if ref.empty:
         return {}
     subset = ref[ref["value_type"].eq(value_type)]
-    return dict(zip(subset["value_code"].astype(str), subset["value_description"].astype(str)))
+    return dict(zip(subset["value_code"].astype(str), subset["value_description"].astype(str), strict=False))
 
 
 def size_class(population: float) -> str:
@@ -77,7 +76,11 @@ def build_master() -> pd.DataFrame:
     ref = read_interim("ref_code_values")
 
     service_path = REPO_ROOT / "data" / "interim" / "service_areas_ohio.parquet"
-    service = pd.read_parquet(service_path) if service_path.exists() else pd.DataFrame(columns=["pwsid", "geometry_source_tier"])
+    service = (
+        pd.read_parquet(service_path)
+        if service_path.exists()
+        else pd.DataFrame(columns=["pwsid", "geometry_source_tier"])
+    )
 
     pws = pws.copy()
     pws["submission_sort"] = pws["submissionyearquarter"].map(parse_submission_quarter)
@@ -102,7 +105,13 @@ def build_master() -> pd.DataFrame:
         "TNCWS": "Transient non-community water system",
         "NTNCWS": "Non-transient non-community water system",
     }
-    activity_map = {"A": "Active", "I": "Inactive", "N": "Changed from public to non-public", "M": "Merged", "P": "Potential future"}
+    activity_map = {
+        "A": "Active",
+        "I": "Inactive",
+        "N": "Changed from public to non-public",
+        "M": "Merged",
+        "P": "Potential future",
+    }
 
     master = latest.merge(first_last, on="pwsid", how="left").merge(geo_lookup, on="pwsid", how="left")
     # Preliminary service-area boundary match only. The FINAL geometry_source_tier and
@@ -123,7 +132,9 @@ def build_master() -> pd.DataFrame:
     master["city"] = master["city"].fillna(master.get("city_name", "")).fillna("").str.title()
     master["system_type"] = master["pws_type_code"].map(type_map).fillna(master["pws_type_code"])
     master["owner_type"] = master["owner_type_code"].map(owner_map).fillna(master["owner_type_code"])
-    master["primary_source_water_type"] = master["primary_source_code"].map(source_map).fillna(master["primary_source_code"])
+    master["primary_source_water_type"] = (
+        master["primary_source_code"].map(source_map).fillna(master["primary_source_code"])
+    )
     master["activity_status"] = master["pws_activity_code"].map(activity_map).fillna(master["pws_activity_code"])
     master["system_size_class"] = master["population_served"].map(size_class)
     master["is_small_system"] = master["population_served"].le(3300).fillna(False)

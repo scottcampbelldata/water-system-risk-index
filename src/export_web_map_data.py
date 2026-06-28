@@ -12,7 +12,6 @@ from shapely.geometry import MultiPolygon, Polygon
 from state_config import target_state_fips
 from utils import REPO_ROOT
 
-
 WIDTH = 980
 HEIGHT = 820
 PADDING = 24
@@ -96,7 +95,13 @@ def export_web_map_data() -> Path:
     counties["county_fips"] = counties["GEOID"]
     counties["county_name"] = counties["NAME"] + " County"
 
-    for column in ["system_count", "high_review_count", "moderate_plus_count", "low_spatial_count", "population_served"]:
+    for column in [
+        "system_count",
+        "high_review_count",
+        "moderate_plus_count",
+        "low_spatial_count",
+        "population_served",
+    ]:
         counties[column] = counties[column].fillna(0).astype(int)
     for column in ["avg_score", "max_score"]:
         counties[column] = counties[column].fillna(0).round(2)

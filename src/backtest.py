@@ -14,7 +14,6 @@ precision@k chart. This converts hand-chosen weights into a measurable claim.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -36,7 +35,9 @@ def compliance_component_asof(records: pd.DataFrame, cutoff: pd.Timestamp) -> fl
     """Mirror of build_features.build_compliance_summary, evaluated as of `cutoff`."""
     recent36 = _window(records, "violation_event_date", cutoff, 36)
     recent60 = _window(records, "violation_event_date", cutoff, 60)
-    repeat_count = int(recent60.duplicated(["violation_code", "contaminant_code"], keep=False).sum()) if not recent60.empty else 0
+    repeat_count = (
+        int(recent60.duplicated(["violation_code", "contaminant_code"], keep=False).sum()) if not recent60.empty else 0
+    )
     open_flag = bool(recent60["is_open_violation"].any()) if not recent60.empty else False
     return min(
         100,
@@ -55,7 +56,11 @@ def enforcement_component_asof(records: pd.DataFrame, cutoff: pd.Timestamp) -> f
     recent60 = _window(records, "enforcement_date", cutoff, 60)
     formal = int(recent60["enf_action_category"].eq("Formal").sum()) if not recent60.empty else 0
     informal = int(recent60["enf_action_category"].eq("Informal").sum()) if not recent60.empty else 0
-    penalty = int(recent60["enforcement_action_type_code"].fillna("").str.contains("PEN|PN", case=False).sum()) if not recent60.empty else 0
+    penalty = (
+        int(recent60["enforcement_action_type_code"].fillna("").str.contains("PEN|PN", case=False).sum())
+        if not recent60.empty
+        else 0
+    )
     return min(100, len(recent36) * 8 + formal * 16 + informal * 5 + penalty * 20 + (10 if len(recent36) else 0))
 
 
@@ -90,16 +95,30 @@ def precision_at_k(scores: np.ndarray, labels: np.ndarray, k: int) -> float:
 def run_backtest(cutoff: pd.Timestamp = CUTOFF, horizon_months: int = HORIZON_MONTHS) -> dict:
     weights = load_yaml(REPO_ROOT / "config" / "scoring_weights.yaml")["overall_weights"]
     risk = pd.read_csv(REPO_ROOT / "data" / "processed" / "water_system_risk_scores.csv", dtype={"pwsid": str})
-    viol = violation_base()
-    viol = viol[viol["violation_event_date"].notna()]
-    enf = viol[viol["enforcement_date"].notna()] if "enforcement_date" in viol.columns else viol.iloc[0:0]
-    enf = viol.copy()
-    enf["enforcement_date"] = pd.to_datetime(enf["enforcement_date"], errors="coerce", format="mixed")
+    viol_all = violation_base()
+    viol = viol_all[viol_all["violation_event_date"].notna()]
+    # Enforcement records are the rows carrying an enforcement action, mirroring
+    # build_enforcement_summary (filter on enforcement_id), NOT a copy of all
+    # violations. enforcement_component_asof windows these by enforcement_date.
+    if "enforcement_id" in viol_all.columns:
+        enf = viol_all[viol_all["enforcement_id"].notna()].copy()
+    else:
+        enf = viol_all.iloc[0:0].copy()
+    if "enforcement_date" in enf.columns:
+        enf["enforcement_date"] = pd.to_datetime(enf["enforcement_date"], errors="coerce", format="mixed")
+    else:
+        enf["enforcement_date"] = pd.NaT
 
     horizon_end = cutoff + pd.DateOffset(months=horizon_months)
 
     # Time-invariant components from the current model (proxy), keyed by pwsid.
-    static_cols = ["vulnerability_component", "drought_component", "funding_gap_component", "small_system_component", "data_quality_penalty"]
+    static_cols = [
+        "vulnerability_component",
+        "drought_component",
+        "funding_gap_component",
+        "small_system_component",
+        "data_quality_penalty",
+    ]
     static = risk.set_index("pwsid")[static_cols]
 
     by_pwsid_v = dict(tuple(viol.groupby("pwsid")))
@@ -111,7 +130,7 @@ def run_backtest(cutoff: pd.Timestamp = CUTOFF, horizon_months: int = HORIZON_MO
         erec = by_pwsid_e.get(pwsid, enf.iloc[0:0])
         comp = compliance_component_asof(vrec, cutoff)
         enf_c = enforcement_component_asof(erec, cutoff)
-        st = static.loc[pwsid] if pwsid in static.index else pd.Series({c: 0 for c in static_cols})
+        st = static.loc[pwsid] if pwsid in static.index else pd.Series(dict.fromkeys(static_cols, 0))
         score = (
             comp * weights["compliance_risk_component"]
             + enf_c * weights["enforcement_risk_component"]
@@ -125,7 +144,15 @@ def run_backtest(cutoff: pd.Timestamp = CUTOFF, horizon_months: int = HORIZON_MO
         future = vrec[vrec["violation_event_date"].gt(cutoff) & vrec["violation_event_date"].le(horizon_end)]
         outcome = int(future["is_health_based"].any())
         prior36 = len(_window(vrec, "violation_event_date", cutoff, 36))
-        rows.append({"pwsid": pwsid, "score_asof": max(0.0, min(100.0, score)), "compliance_asof": comp, "prior36_violations": prior36, "outcome": outcome})
+        rows.append(
+            {
+                "pwsid": pwsid,
+                "score_asof": max(0.0, min(100.0, score)),
+                "compliance_asof": comp,
+                "prior36_violations": prior36,
+                "outcome": outcome,
+            }
+        )
 
     df = pd.DataFrame(rows).merge(risk[["pwsid", "population_served"]], on="pwsid", how="left")
     labels = df["outcome"].to_numpy()
@@ -136,7 +163,9 @@ def run_backtest(cutoff: pd.Timestamp = CUTOFF, horizon_months: int = HORIZON_MO
         return {
             "auc": round(roc_auc(scores, labels), 4),
             "precision_at_k": {str(k): round(precision_at_k(scores, labels, k), 4) for k in TOP_K},
-            "lift_at_k": {str(k): round(precision_at_k(scores, labels, k) / base_rate, 2) if base_rate else None for k in TOP_K},
+            "lift_at_k": {
+                str(k): round(precision_at_k(scores, labels, k) / base_rate, 2) if base_rate else None for k in TOP_K
+            },
         }
 
     report = {
@@ -162,6 +191,7 @@ def run_backtest(cutoff: pd.Timestamp = CUTOFF, horizon_months: int = HORIZON_MO
 def _plot(df: pd.DataFrame, base_rate: float) -> None:
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except Exception:

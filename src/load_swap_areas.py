@@ -112,10 +112,14 @@ def load_swap_areas(force_download: bool = False) -> pd.DataFrame:
 
     # Dissolve to one geometry per (pwsid, area_kind) so a system's multiple wells
     # of the same kind collapse into a single MultiPolygon.
-    attributes = combined.sort_values("pwsid").groupby(["pwsid", "area_kind"], as_index=False).agg(
-        sys_name=("sys_name", "first"), county=("county", "first")
+    attributes = (
+        combined.sort_values("pwsid")
+        .groupby(["pwsid", "area_kind"], as_index=False)
+        .agg(sys_name=("sys_name", "first"), county=("county", "first"))
     )
-    dissolved = combined.dissolve(by=["pwsid", "area_kind"], as_index=False, aggfunc="first")[["pwsid", "area_kind", "geometry"]]
+    dissolved = combined.dissolve(by=["pwsid", "area_kind"], as_index=False, aggfunc="first")[
+        ["pwsid", "area_kind", "geometry"]
+    ]
     dissolved = dissolved.merge(attributes, on=["pwsid", "area_kind"], how="left")
 
     projected = dissolved.to_crs(EQUAL_AREA_CRS)
@@ -139,7 +143,11 @@ def load_swap_areas(force_download: bool = False) -> pd.DataFrame:
             "areaSqKm": float(row.area_sqkm) if not pd.isna(row.area_sqkm) else None,
             "geometry": geom,
         }
-        for row, geom in zip(dissolved.itertuples(index=False), (mapping(g) for g in simplified_wgs.values))
+        for row, geom in zip(
+            dissolved.itertuples(index=False),
+            (mapping(g) for g in simplified_wgs.values),
+            strict=False,
+        )
     ]
     seed_path = REPO_ROOT / "data" / "processed" / "swap_areas.json"
     seed_path.write_text(json.dumps(seed, separators=(",", ":"), ensure_ascii=True), encoding="utf-8")
@@ -161,7 +169,7 @@ def load_swap_areas(force_download: bool = False) -> pd.DataFrame:
 
     print(
         f"SWAP: raw={raw_total} distinct_pwsid={distinct_pwsids} dissolved={len(dissolved)} "
-        f"seed={seed_path} ({seed_path.stat().st_size/1_000_000:.1f} MB)"
+        f"seed={seed_path} ({seed_path.stat().st_size / 1_000_000:.1f} MB)"
     )
     print(f"area kinds: {report['area_kinds']}")
     return dissolved

@@ -64,7 +64,9 @@ def summarize_srf(master: pd.DataFrame | None = None) -> pd.DataFrame:
 
     srf = load_staged_srf(raw_path)
     pwsid_col = find_column(srf, ["pwsid", "pws_id", "public_water_system_id"])
-    name_col = find_column(srf, ["recipient_name", "recipient", "borrower_name", "assistance_recipient", "project_sponsor"])
+    name_col = find_column(
+        srf, ["recipient_name", "recipient", "borrower_name", "assistance_recipient", "project_sponsor"]
+    )
     county_col = find_column(srf, ["county", "county_name"])
     amount_col = find_column(srf, ["assistance_amount", "loan_amount", "funding_amount", "total_assistance", "amount"])
     year_col = find_column(srf, ["project_year", "fiscal_year", "year", "assistance_year"])
@@ -74,9 +76,13 @@ def summarize_srf(master: pd.DataFrame | None = None) -> pd.DataFrame:
 
     srf["recipient_name"] = srf[name_col].fillna("")
     srf["recipient_norm"] = srf["recipient_name"].map(normalize_name)
-    srf["county_norm"] = srf[county_col].fillna("").str.upper().str.replace(" COUNTY", "", regex=False) if county_col else ""
+    srf["county_norm"] = (
+        srf[county_col].fillna("").str.upper().str.replace(" COUNTY", "", regex=False) if county_col else ""
+    )
     srf["project_year"] = pd.to_numeric(srf[year_col], errors="coerce") if year_col else pd.NA
-    srf["assistance_amount"] = pd.to_numeric(srf[amount_col].replace(r"[\$,]", "", regex=True), errors="coerce").fillna(0) if amount_col else 0
+    srf["assistance_amount"] = (
+        pd.to_numeric(srf[amount_col].replace(r"[\$,]", "", regex=True), errors="coerce").fillna(0) if amount_col else 0
+    )
     srf["pwsid"] = srf[pwsid_col].fillna("").str.upper() if pwsid_col else ""
 
     rows = []
@@ -94,7 +100,9 @@ def summarize_srf(master: pd.DataFrame | None = None) -> pd.DataFrame:
                 confidence = "exact_name_county_match"
             else:
                 scored = county_matches.copy()
-                scored["name_score"] = scored["recipient_norm"].map(lambda value: SequenceMatcher(None, system_norm, value).ratio())
+                scored["name_score"] = scored["recipient_norm"].map(
+                    lambda value, target=system_norm: SequenceMatcher(None, target, value).ratio()
+                )
                 fuzzy = scored[scored["name_score"].ge(0.84)]
                 if not fuzzy.empty:
                     candidates = fuzzy
@@ -103,10 +111,16 @@ def summarize_srf(master: pd.DataFrame | None = None) -> pd.DataFrame:
                     candidates = county_matches.iloc[0:0]
                     confidence = "unmatched"
 
-        recent = candidates[candidates["project_year"].ge(current_year - 10)] if not candidates.empty and "project_year" in candidates else candidates
+        recent = (
+            candidates[candidates["project_year"].ge(current_year - 10)]
+            if not candidates.empty and "project_year" in candidates
+            else candidates
+        )
         total = float(recent["assistance_amount"].sum()) if not recent.empty else 0.0
         project_count = int(len(recent))
-        most_recent_year = int(recent["project_year"].max()) if not recent.empty and pd.notna(recent["project_year"].max()) else pd.NA
+        most_recent_year = (
+            int(recent["project_year"].max()) if not recent.empty and pd.notna(recent["project_year"].max()) else pd.NA
+        )
         years_since = current_year - most_recent_year if pd.notna(most_recent_year) else pd.NA
         rows.append(
             {
@@ -119,7 +133,9 @@ def summarize_srf(master: pd.DataFrame | None = None) -> pd.DataFrame:
                 "project_count_10y": project_count,
                 "most_recent_project_year": most_recent_year,
                 "years_since_last_funding": years_since,
-                "funding_gap_flag": "possible_gap_no_recent_matched_project" if project_count == 0 else "recent_matched_project",
+                "funding_gap_flag": "possible_gap_no_recent_matched_project"
+                if project_count == 0
+                else "recent_matched_project",
                 "funding_match_confidence": confidence,
                 "funding_notes": "SRF match is based on staged portal export and matching confidence; unmatched records are not proof of no funding.",
             }

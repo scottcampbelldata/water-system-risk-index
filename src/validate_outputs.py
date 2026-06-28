@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
 import pandas as pd
 
 from geography_tiers import VALID_CONFIDENCE
 from geography_tiers import VALID_TIERS as VALID_GEOMETRY_TIERS
 from utils import REPO_ROOT, write_dataframe
-
 
 VALID_TIERS = {"Critical Review", "High Review", "Moderate Review", "Monitor", "Lower Priority"}
 MATCHED_TIERS = {"verified_service_area_boundary", "modeled_service_area_boundary"}
@@ -49,20 +47,55 @@ def validate_outputs() -> pd.DataFrame:
     funding = pd.read_csv(processed / "water_system_funding_summary.csv", dtype={"pwsid": str})
 
     duplicate_count = int(master.duplicated("pwsid").sum())
-    add_check(rows, "no_duplicate_pwsid_in_master", duplicate_count == 0, "critical", duplicate_count, "One row per PWSID is required.")
+    add_check(
+        rows,
+        "no_duplicate_pwsid_in_master",
+        duplicate_count == 0,
+        "critical",
+        duplicate_count,
+        "One row per PWSID is required.",
+    )
 
     required_master = ["pwsid", "pws_name", "state", "county", "population_served", "data_quality_flags"]
     missing = require_columns(master, required_master)
-    add_check(rows, "master_required_columns_present", not missing, "critical", len(missing), f"Missing columns: {', '.join(missing)}")
+    add_check(
+        rows,
+        "master_required_columns_present",
+        not missing,
+        "critical",
+        len(missing),
+        f"Missing columns: {', '.join(missing)}",
+    )
 
     out_of_range = risk[~risk["overall_risk_score"].between(0, 100)]
-    add_check(rows, "risk_score_between_0_and_100", out_of_range.empty, "critical", len(out_of_range), "Scores must be bounded.")
+    add_check(
+        rows,
+        "risk_score_between_0_and_100",
+        out_of_range.empty,
+        "critical",
+        len(out_of_range),
+        "Scores must be bounded.",
+    )
 
     bad_tiers = risk[~risk["risk_tier"].isin(VALID_TIERS)]
-    add_check(rows, "valid_risk_tiers_only", bad_tiers.empty, "critical", len(bad_tiers), "Risk tier names must match dashboard dictionary.")
+    add_check(
+        rows,
+        "valid_risk_tiers_only",
+        bad_tiers.empty,
+        "critical",
+        len(bad_tiers),
+        "Risk tier names must match dashboard dictionary.",
+    )
 
     negative_pop = master[pd.to_numeric(master["population_served"], errors="coerce").lt(0)]
-    add_check(rows, "population_served_not_negative", negative_pop.empty, "critical", len(negative_pop), "Population served cannot be negative.")
+    add_check(
+        rows,
+        "population_served_not_negative",
+        negative_pop.empty,
+        "critical",
+        len(negative_pop),
+        "Population served cannot be negative.",
+    )
 
     component_columns = [
         "compliance_risk_component",
@@ -85,16 +118,39 @@ def validate_outputs() -> pd.DataFrame:
         "Every normalized component must be within 0-100.",
     )
 
-    bad_confidence = geography[geography["spatial_confidence"].isna() | ~geography["spatial_confidence"].isin(VALID_CONFIDENCE)]
-    add_check(rows, "spatial_confidence_valid_not_null", bad_confidence.empty, "high", len(bad_confidence), "Spatial confidence is required and must use the geography hierarchy.")
-
-    missing_funding = funding[funding["funding_match_confidence"].isna() | ~funding["funding_match_confidence"].isin(FUNDING_CONFIDENCE)]
-    add_check(rows, "funding_match_confidence_valid_not_null", missing_funding.empty, "high", len(missing_funding), "Funding match confidence is required.")
-
-    row_count_notes = (
-        f"master={len(master)}, geography={len(geography)}, funding={len(funding)}, risk={len(risk)}"
+    bad_confidence = geography[
+        geography["spatial_confidence"].isna() | ~geography["spatial_confidence"].isin(VALID_CONFIDENCE)
+    ]
+    add_check(
+        rows,
+        "spatial_confidence_valid_not_null",
+        bad_confidence.empty,
+        "high",
+        len(bad_confidence),
+        "Spatial confidence is required and must use the geography hierarchy.",
     )
-    add_check(rows, "row_counts_by_stage", len(master) == len(risk) == len(geography) == len(funding), "high", 0, row_count_notes)
+
+    missing_funding = funding[
+        funding["funding_match_confidence"].isna() | ~funding["funding_match_confidence"].isin(FUNDING_CONFIDENCE)
+    ]
+    add_check(
+        rows,
+        "funding_match_confidence_valid_not_null",
+        missing_funding.empty,
+        "high",
+        len(missing_funding),
+        "Funding match confidence is required.",
+    )
+
+    row_count_notes = f"master={len(master)}, geography={len(geography)}, funding={len(funding)}, risk={len(risk)}"
+    add_check(
+        rows,
+        "row_counts_by_stage",
+        len(master) == len(risk) == len(geography) == len(funding),
+        "high",
+        0,
+        row_count_notes,
+    )
 
     for column in ["pws_name", "county", "population_served"]:
         missing_pct = master[column].isna().mean() * 100
@@ -109,15 +165,35 @@ def validate_outputs() -> pd.DataFrame:
 
     top20 = risk.nsmallest(20, "rank_statewide")
     obvious_errors = top20[top20["explanation_text"].isna() | top20["pwsid"].isna()]
-    add_check(rows, "top_20_systems_reviewed_for_obvious_errors", obvious_errors.empty, "medium", len(obvious_errors), "Top ranked rows have PWSID and explanation text.")
+    add_check(
+        rows,
+        "top_20_systems_reviewed_for_obvious_errors",
+        obvious_errors.empty,
+        "medium",
+        len(obvious_errors),
+        "Top ranked rows have PWSID and explanation text.",
+    )
 
     # --- Geometry source + service-area boundary checks (Phase 1) ---
-    bad_tier = geography[geography["geometry_source_tier"].isna() | ~geography["geometry_source_tier"].isin(VALID_GEOMETRY_TIERS)]
-    add_check(rows, "geometry_source_tier_valid", bad_tier.empty, "high", len(bad_tier), "Every record needs a valid geometry source tier.")
+    bad_tier = geography[
+        geography["geometry_source_tier"].isna() | ~geography["geometry_source_tier"].isin(VALID_GEOMETRY_TIERS)
+    ]
+    add_check(
+        rows,
+        "geometry_source_tier_valid",
+        bad_tier.empty,
+        "high",
+        len(bad_tier),
+        "Every record needs a valid geometry source tier.",
+    )
 
     boundaries_path = REPO_ROOT / "data" / "interim" / "service_area_boundaries_web.parquet"
     report_path = REPO_ROOT / "data" / "interim" / "service_area_simplification_report.json"
-    boundaries = pd.read_parquet(boundaries_path) if boundaries_path.exists() else pd.DataFrame(columns=["pwsid", "geometry_geojson"])
+    boundaries = (
+        pd.read_parquet(boundaries_path)
+        if boundaries_path.exists()
+        else pd.DataFrame(columns=["pwsid", "geometry_geojson"])
+    )
     report = json.loads(report_path.read_text(encoding="utf-8")) if report_path.exists() else {}
 
     def _parseable(value: str) -> bool:
@@ -141,15 +217,20 @@ def validate_outputs() -> pd.DataFrame:
     )
 
     duplicate_boundaries = int(boundaries["pwsid"].duplicated().sum()) if len(boundaries) else 0
-    add_check(rows, "no_duplicate_boundary_pwsid_after_dissolve", duplicate_boundaries == 0, "critical", duplicate_boundaries, "One boundary geometry per PWSID after dissolve.")
+    add_check(
+        rows,
+        "no_duplicate_boundary_pwsid_after_dissolve",
+        duplicate_boundaries == 0,
+        "critical",
+        duplicate_boundaries,
+        "One boundary geometry per PWSID after dissolve.",
+    )
 
     raw_n = report.get("raw_feature_count")
     unique_n = report.get("unique_pwsid_count")
     dissolved_n = report.get("dissolved_output_count")
     reconciles = (
-        unique_n == dissolved_n == len(boundaries) == len(matched_pwsids)
-        and raw_n is not None
-        and raw_n >= unique_n
+        unique_n == dissolved_n == len(boundaries) == len(matched_pwsids) and raw_n is not None and raw_n >= unique_n
     )
     add_check(
         rows,
@@ -186,7 +267,14 @@ def validate_outputs() -> pd.DataFrame:
         )
     except Exception:
         fc_valid = False
-    add_check(rows, "map_boundaries_featurecollection_valid", bool(fc_valid), "high", 0, f"Assembled a valid FeatureCollection with {len(boundaries)} boundary features.")
+    add_check(
+        rows,
+        "map_boundaries_featurecollection_valid",
+        bool(fc_valid),
+        "high",
+        0,
+        f"Assembled a valid FeatureCollection with {len(boundaries)} boundary features.",
+    )
 
     # --- Phase 2: SWAP source-water protection checks (only when SWAP is loaded) ---
     swap_seed = REPO_ROOT / "data" / "processed" / "swap_areas.json"
@@ -200,7 +288,14 @@ def validate_outputs() -> pd.DataFrame:
             return geom.get("type") in {"Polygon", "MultiPolygon"} and bool(geom.get("coordinates"))
 
         bad_swap = sum(1 for area in swap if not _swap_parseable(area))
-        add_check(rows, "swap_areas_parseable", bad_swap == 0, "high", bad_swap, f"{bad_swap} unparseable SWAP geometries of {len(swap)}.")
+        add_check(
+            rows,
+            "swap_areas_parseable",
+            bad_swap == 0,
+            "high",
+            bad_swap,
+            f"{bad_swap} unparseable SWAP geometries of {len(swap)}.",
+        )
 
         dissolved_n = swap_report.get("dissolved_output_count")
         add_check(
@@ -214,7 +309,14 @@ def validate_outputs() -> pd.DataFrame:
 
         covered = {area.get("pwsid") for area in swap}
         matched = len(covered & set(risk["pwsid"]))
-        add_check(rows, "swap_pwsid_coverage_present", matched > 0, "medium", matched, f"{matched} scored systems have a source-protection area.")
+        add_check(
+            rows,
+            "swap_pwsid_coverage_present",
+            matched > 0,
+            "medium",
+            matched,
+            f"{matched} scored systems have a source-protection area.",
+        )
 
     output = pd.DataFrame(rows)
     write_dataframe(output, REPO_ROOT / "data" / "processed" / "data_quality_report")

@@ -18,7 +18,6 @@ import requests
 
 from utils import REPO_ROOT, ensure_directories, list_to_pipe, load_yaml, read_csv_if_exists, write_csv
 
-
 SOURCE_INVENTORY_FIELDS = [
     "source_name",
     "agency",
@@ -149,25 +148,40 @@ def download_source(source: dict, force: bool, include_large: bool, lookback_day
 
     if method == "manual":
         status = "manual_available" if local_path.exists() else "manual_required"
-        notes = "Manual source found locally." if local_path.exists() else "Download from landing page and place at local_raw_path."
+        notes = (
+            "Manual source found locally."
+            if local_path.exists()
+            else "Download from landing page and place at local_raw_path."
+        )
         print(f"{source_name}: {status}")
         return manifest_row(source, status=status, source_url=source_url, notes=notes)
 
     if method not in {"direct_download", "parameterized_download"}:
         print(f"{source_name}: skipped_unknown_method")
-        return manifest_row(source, status="skipped_unknown_method", source_url=source_url, notes=f"Unsupported method: {method}")
+        return manifest_row(
+            source, status="skipped_unknown_method", source_url=source_url, notes=f"Unsupported method: {method}"
+        )
 
     if should_skip_large(source, include_large):
         print(f"{source_name}: skipped_large")
-        return manifest_row(source, status="skipped_large", source_url=source_url, notes="Use --include-large to download this source.")
+        return manifest_row(
+            source, status="skipped_large", source_url=source_url, notes="Use --include-large to download this source."
+        )
 
     if not source_url:
         print(f"{source_name}: missing_url")
-        return manifest_row(source, status="missing_url", source_url=source_url, notes="No direct_download_url configured.")
+        return manifest_row(
+            source, status="missing_url", source_url=source_url, notes="No direct_download_url configured."
+        )
 
     if local_path.exists() and not force:
         print(f"{source_name}: exists")
-        return manifest_row(source, status="exists", source_url=source_url, notes="Existing raw file preserved. Use --force to overwrite.")
+        return manifest_row(
+            source,
+            status="exists",
+            source_url=source_url,
+            notes="Existing raw file preserved. Use --force to overwrite.",
+        )
 
     local_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = local_path.with_suffix(local_path.suffix + ".download")
@@ -201,12 +215,22 @@ def select_sources(config: dict, selected_names: list[str] | None, all_sources: 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build source inventory and download/stage raw public data.")
-    parser.add_argument("--inventory-only", action="store_true", help="Create folders, inventory, and manifest snapshot without downloading.")
+    parser.add_argument(
+        "--inventory-only",
+        action="store_true",
+        help="Create folders, inventory, and manifest snapshot without downloading.",
+    )
     parser.add_argument("--source", action="append", help="Source name to process. Can be provided more than once.")
-    parser.add_argument("--all", action="store_true", help="Process every configured source. Large files still require --include-large.")
+    parser.add_argument(
+        "--all", action="store_true", help="Process every configured source. Large files still require --include-large."
+    )
     parser.add_argument("--force", action="store_true", help="Overwrite existing raw files.")
-    parser.add_argument("--include-large", action="store_true", help="Allow large configured downloads such as the national SDWA zip.")
-    parser.add_argument("--lookback-days", type=int, default=365, help="Lookback window for parameterized time-series sources.")
+    parser.add_argument(
+        "--include-large", action="store_true", help="Allow large configured downloads such as the national SDWA zip."
+    )
+    parser.add_argument(
+        "--lookback-days", type=int, default=365, help="Lookback window for parameterized time-series sources."
+    )
     parser.add_argument("--list-sources", action="store_true", help="Print configured source names and exit.")
     return parser.parse_args()
 

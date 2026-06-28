@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -33,8 +32,8 @@ WGS84 = 4326
 
 # Candidate simplification tolerances in metres (largest first).
 TOLERANCE_CANDIDATES = [150.0, 100.0, 50.0, 25.0, 10.0, 5.0]
-AREA_DELTA_THRESHOLD = 0.05   # 5% per-polygon area change is "too much"
-MAX_FRACTION_OVER = 0.02      # at most 2% of polygons may exceed the threshold
+AREA_DELTA_THRESHOLD = 0.05  # 5% per-polygon area change is "too much"
+MAX_FRACTION_OVER = 0.02  # at most 2% of polygons may exceed the threshold
 
 
 def _classify_tier(symbology: str) -> str:
@@ -95,7 +94,11 @@ def load_service_areas() -> pd.DataFrame:
     attribute_cols = [c for c in gdf.columns if c != "geometry"]
     attributes = gdf.sort_values("pwsid")[attribute_cols].groupby("pwsid", as_index=False).first()
     dissolved = gdf.dissolve(by="pwsid", as_index=False, aggfunc="first")[["pwsid", "geometry"]]
-    dissolved = dissolved.merge(attributes.drop(columns=[c for c in attributes.columns if c == "geometry"], errors="ignore"), on="pwsid", how="left")
+    dissolved = dissolved.merge(
+        attributes.drop(columns=[c for c in attributes.columns if c == "geometry"], errors="ignore"),
+        on="pwsid",
+        how="left",
+    )
     dissolved_count = len(dissolved)
 
     dissolved["geometry_source_tier"] = dissolved["symbology_field"].map(_classify_tier)

@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from utils import REPO_ROOT
@@ -39,7 +38,20 @@ def export_web_app_data() -> Path:
     quality = pd.read_csv(processed / "data_quality_report.csv")
 
     df = (
-        risk.merge(master[["pwsid", "owner_type", "primary_source_water_type", "activity_status", "service_connections", "data_quality_flags"]], on="pwsid", how="left")
+        risk.merge(
+            master[
+                [
+                    "pwsid",
+                    "owner_type",
+                    "primary_source_water_type",
+                    "activity_status",
+                    "service_connections",
+                    "data_quality_flags",
+                ]
+            ],
+            on="pwsid",
+            how="left",
+        )
         .merge(
             geo[
                 [
@@ -175,10 +187,7 @@ def export_web_app_data() -> Path:
     ]
 
     tier_order = ["Critical Review", "High Review", "Moderate Review", "Monitor", "Lower Priority"]
-    tiers = [
-        {"tier": tier, "systems": int((df["risk_tier"] == tier).sum())}
-        for tier in tier_order
-    ]
+    tiers = [{"tier": tier, "systems": int((df["risk_tier"] == tier).sum())} for tier in tier_order]
 
     approximate_tiers = ["validated_system_coordinate", "city_or_zip_centroid", "county_centroid"]
     swap_path = REPO_ROOT / "data" / "processed" / "swap_areas.json"

@@ -54,7 +54,5 @@ LIMITATION_NOTES = {
         "No service-area boundary matched; the county centroid is used only for screening-level "
         "mapping and does not represent the system's actual service area."
     ),
-    "unmatched": (
-        "No service-area boundary and no county geography matched; location is unknown."
-    ),
+    "unmatched": ("No service-area boundary and no county geography matched; location is unknown."),
 }

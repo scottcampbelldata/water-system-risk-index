@@ -49,6 +49,10 @@ def load_svi() -> pd.DataFrame:
         "housing_transportation_svi_percentile",
     ]:
         df[column] = pd.to_numeric(df[column], errors="coerce")
+        # CDC/ATSDR encodes suppressed/missing percentiles as -999. Left in place
+        # these survive numeric coercion and (x100, clamped) become a misleading
+        # vulnerability score of 0; map them to NA so they read as missing data.
+        df.loc[df[column] < 0, column] = pd.NA
 
     write_dataframe(df, REPO_ROOT / "data" / "interim" / "svi_2022_ohio_county")
     print(f"svi_2022_ohio_county: rows={len(df):,}")
