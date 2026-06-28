@@ -1,6 +1,10 @@
 # Power BI Dashboard Wireframe
 
-Dashboard build is intentionally deferred until the data model is validated.
+> **Status (historical):** This is the original Power BI wireframe. The project
+> ultimately shipped an interactive **web** dashboard (Leaflet + FastAPI) instead of
+> a Power BI report; the Power BI-ready exports in `data/powerbi/` remain available
+> for anyone who prefers to build the report below. See the [README](../README.md)
+> and [`web/`](../web/) for the live implementation.
 
 ## Page 1: Executive Summary
 

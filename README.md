@@ -88,9 +88,12 @@ The MVP will produce these Power BI-ready files:
 - `water_system_geography.csv`
 - `water_system_risk_scores.csv`
 - `data_quality_report.csv`
-- `methodology_notes.md`
-- `portfolio_case_study.md`
-- `powerbi_data_dictionary.md`
+
+Project documentation lives in [`docs/`](docs/): the
+[methodology](docs/methodology.md), [model card](docs/model_card.md),
+[limitations](docs/limitations.md), [data dictionary](docs/data_dictionary.md),
+[portfolio case study](docs/portfolio_case_study.md), and
+[deploy guide](docs/deploy.md).
 
 ## Modeling Language
 

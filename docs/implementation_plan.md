@@ -1,5 +1,12 @@
 # Technical Implementation Plan
 
+> **Status (historical):** This plan covers the original data-pipeline phases, which
+> are complete. The project subsequently went beyond the planned Power BI hand-off
+> and shipped a full-stack web dashboard (FastAPI + Postgres backend, static
+> Cloudflare Pages frontend) plus model validation (backtest, sensitivity, fairness).
+> See the [README](../README.md) for the current architecture and
+> [`docs/deploy.md`](deploy.md) for the live deployment.
+
 ## Objective
 
 Build a reproducible Ohio prototype that transforms public drinking water, funding, vulnerability, drought, and geography data into explainable Power BI-ready review-priority datasets.
