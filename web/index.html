@@ -61,7 +61,8 @@
         </div>
       </section>
 
-      <section class="notice" id="useNotice"></section>
+      <section class="notice" id="useNotice" hidden></section>
+      <section class="notice notice-error" id="errorBanner" role="alert" hidden></section>
 
       <section class="filters" aria-label="Dashboard filters">
         <label>
@@ -150,16 +151,17 @@
         </div>
         <div class="table-wrap">
           <table>
+            <caption class="sr-only">Ranked list of public water systems matching the current filters. Each row is selectable to open its detail panel.</caption>
             <thead>
               <tr>
-                <th>Rank</th>
-                <th>PWSID</th>
-                <th>System</th>
-                <th>County</th>
-                <th>Score</th>
-                <th>Tier</th>
-                <th>Top driver</th>
-                <th>Spatial</th>
+                <th scope="col">Rank</th>
+                <th scope="col">PWSID</th>
+                <th scope="col">System</th>
+                <th scope="col">County</th>
+                <th scope="col">Score</th>
+                <th scope="col">Tier</th>
+                <th scope="col">Top driver</th>
+                <th scope="col">Spatial</th>
               </tr>
             </thead>
             <tbody id="systemsTable"></tbody>
@@ -189,7 +191,6 @@
       </section>
     </main>
 
-    <div class="tooltip" id="tooltip" hidden></div>
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
     <script src="app.js?v=geo-5"></script>

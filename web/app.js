@@ -15,8 +15,13 @@ const state = {
   swapLayer: null,
   countyLayer: null,
   markerByPwsid: new Map(),
-  loadToken: 0
+  loadToken: 0,
+  loading: false
 };
+
+// Incremented on each selectByPwsid call so a slow /systems/{pwsid} fetch from an
+// earlier click cannot overwrite the detail panel for a later one.
+let selectToken = 0;
 
 const geometryTierLabels = {
   verified_service_area_boundary: "System-Sourced Service Area",
@@ -65,7 +70,8 @@ const colors = {
   "High Review": "#a94328",
   "Moderate Review": "#b98322",
   "Monitor": "#285e8e",
-  "Lower Priority": "#64748b"
+  // Darkened from #64748b so white pill/legend text meets WCAG AA (>= 4.5:1) at 12px.
+  "Lower Priority": "#475569"
 };
 
 const componentLabels = {
@@ -91,6 +97,8 @@ const els = {
   geoUnmatched: document.getElementById("geoUnmatched"),
   geoSourceProtection: document.getElementById("geoSourceProtection"),
   useNotice: document.getElementById("useNotice"),
+  errorBanner: document.getElementById("errorBanner"),
+  appShell: document.querySelector("main.app-shell"),
   sourceNote: document.getElementById("sourceNote"),
   searchInput: document.getElementById("searchInput"),
   countyFilter: document.getElementById("countyFilter"),
@@ -112,6 +120,15 @@ const els = {
   detailSubtitle: document.getElementById("detailSubtitle"),
   systemDetail: document.getElementById("systemDetail")
 };
+
+function esc(s) {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function formatNumber(value) {
   if (value === null || value === undefined || value === "") return "--";
@@ -136,6 +153,26 @@ async function api(path, params) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Request to ${path} failed (${response.status})`);
   return response.json();
+}
+
+function showErrorBanner(message) {
+  if (!els.errorBanner) return;
+  els.errorBanner.textContent = message;
+  els.errorBanner.hidden = false;
+}
+
+function clearErrorBanner() {
+  if (!els.errorBanner) return;
+  els.errorBanner.hidden = true;
+  els.errorBanner.textContent = "";
+}
+
+function setLoading(isLoading) {
+  state.loading = isLoading;
+  if (els.appShell) els.appShell.setAttribute("aria-busy", isLoading ? "true" : "false");
+  if (isLoading && els.systemsTable && !els.systemsTable.children.length) {
+    els.systemsTable.innerHTML = `<tr class="table-status"><td colspan="8">Loading…</td></tr>`;
+  }
 }
 
 function filterParams() {
@@ -168,7 +205,7 @@ function initFilters(metadata) {
   tierOrder.forEach(tier => els.tierFilter.appendChild(option(tier)));
 
   els.sizeFilter.appendChild(option("All sizes", ""));
-  ["very_small", "small", "medium", "large", "unknown"].forEach(size => els.sizeFilter.appendChild(option(size.replace("_", " "), size)));
+  ["very_small", "small", "medium", "large", "unknown"].forEach(size => els.sizeFilter.appendChild(option(size.replace(/_/g, " "), size)));
 
   els.geographyFilter.appendChild(option("All geography", ""));
   [
@@ -218,14 +255,29 @@ async function applyFilters({ resetSelection } = { resetSelection: true }) {
   systemsParams.set("page", String(state.page));
   systemsParams.set("page_size", String(state.pageSize));
 
-  const [summary, systems, points] = await Promise.all([
-    api("/summary", base),
-    api("/systems", systemsParams),
-    api("/map/points", base)
-  ]);
+  setLoading(true);
+  let summary, systems, points;
+  try {
+    [summary, systems, points] = await Promise.all([
+      api("/summary", base),
+      api("/systems", systemsParams),
+      api("/map/points", base)
+    ]);
+  } catch (error) {
+    if (token !== state.loadToken) return; // a newer request superseded this one
+    setLoading(false);
+    // Non-fatal: keep prior state and surface an inline banner instead of the fatal handler.
+    showErrorBanner(`Could not refresh data: ${error.message}`);
+    if (els.systemsTable) {
+      els.systemsTable.querySelectorAll("tr.table-status").forEach(row => row.remove());
+    }
+    render();
+    return;
+  }
 
   if (token !== state.loadToken) return; // a newer request superseded this one
 
+  clearErrorBanner();
   state.summary = summary;
   state.items = systems.items;
   state.total = systems.total;
@@ -236,6 +288,7 @@ async function applyFilters({ resetSelection } = { resetSelection: true }) {
   }
 
   render();
+  setLoading(false);
   fitMapToFiltered();
   // Service-area boundaries can be a few MB statewide; load them without blocking the dashboard.
   loadBoundaries(token, base);
@@ -297,7 +350,7 @@ function renderBarChart(container, rows, valueKey, labelKey, colorFn) {
     const color = colorFn(row);
     return `
       <div class="bar-row">
-        <span title="${row[labelKey]}">${row[labelKey]}</span>
+        <span title="${esc(row[labelKey])}">${esc(row[labelKey])}</span>
         <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${color}"></div></div>
         <strong>${formatNumber(row[valueKey])}</strong>
       </div>
@@ -308,11 +361,16 @@ function renderBarChart(container, rows, valueKey, labelKey, colorFn) {
 function renderCharts() {
   const tierRows = tierOrder.map(tier => ({
     tier,
-    systems: (state.summary.tiers.find(row => row.tier === tier) || { systems: 0 }).systems
+    systems: ((state.summary.tiers || []).find(row => row.tier === tier) || { systems: 0 }).systems
   }));
-  renderBarChart(els.tierChart, tierRows, "systems", "tier", row => colors[row.tier]);
+  const anyTier = tierRows.some(row => row.systems > 0);
+  if (!anyTier) {
+    els.tierChart.innerHTML = `<p class="muted chart-empty">No systems match these filters.</p>`;
+  } else {
+    renderBarChart(els.tierChart, tierRows, "systems", "tier", row => colors[row.tier]);
+  }
 
-  const countyRows = state.summary.topCounties;
+  const countyRows = state.summary.topCounties || [];
   renderBarChart(
     els.countyChart,
     countyRows.length ? countyRows : [{ county: "No high-review records in filter", highReviewSystems: 0 }],
@@ -364,9 +422,9 @@ function initializeMap() {
       fillOpacity: 0.14
     }),
     onEachFeature: (feature, layer) => {
-      layer.bindPopup(`<div class="map-popup"><h3>${feature.properties.name || feature.properties.pwsid}</h3>` +
-        `<p><strong>${feature.properties.pwsid}</strong></p>` +
-        `<p>${swapKindLabels[feature.properties.areaKind] || feature.properties.areaKind}</p>` +
+      layer.bindPopup(`<div class="map-popup"><h3>${esc(feature.properties.name || feature.properties.pwsid)}</h3>` +
+        `<p><strong>${esc(feature.properties.pwsid)}</strong></p>` +
+        `<p>${esc(swapKindLabels[feature.properties.areaKind] || feature.properties.areaKind)}</p>` +
         `<p class="muted">Source-water protection area - where the supply is protected, not a service area.</p></div>`);
     }
   });
@@ -447,11 +505,11 @@ async function loadSwap(token, base) {
 function mapPopup(system) {
   return `
     <div class="map-popup">
-      <h3>${system.name}</h3>
-      <p><strong>${system.pwsid}</strong> | ${system.county}</p>
-      <p>Score <strong>${formatScore(system.score)}</strong> | ${system.tier}</p>
-      <p>Population ${formatNumber(system.population)} | ${geometryTierLabels[system.geometrySourceTier] || String(system.spatialConfidence || "").replace(/_/g, " ")}</p>
-      <p>${(system.drivers || []).filter(Boolean).slice(0, 2).join(" + ")}</p>
+      <h3>${esc(system.name)}</h3>
+      <p><strong>${esc(system.pwsid)}</strong> | ${esc(system.county)}</p>
+      <p>Score <strong>${formatScore(system.score)}</strong> | ${esc(system.tier)}</p>
+      <p>Population ${formatNumber(system.population)} | ${esc(geometryTierLabels[system.geometrySourceTier] || String(system.spatialConfidence || "").replace(/_/g, " "))}</p>
+      <p>${esc((system.drivers || []).filter(Boolean).slice(0, 2).join(" + "))}</p>
     </div>
   `;
 }
@@ -514,15 +572,23 @@ function focusSelectedOnMap(zoomToPoint = true) {
   const marker = state.markerByPwsid.get(state.selected.pwsid);
   if (!marker) return;
   if (zoomToPoint) {
-    state.map.setView(marker.getLatLng(), Math.max(state.map.getZoom(), 11), { animate: true });
+    const animate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    state.map.setView(marker.getLatLng(), Math.max(state.map.getZoom(), 11), { animate });
   }
   marker.openPopup();
 }
 
 async function selectByPwsid(pwsid, zoom) {
+  const myToken = ++selectToken;
   let record = state.items.find(system => system.pwsid === pwsid);
   if (!record) {
-    record = await api(`/systems/${encodeURIComponent(pwsid)}`);
+    try {
+      record = await api(`/systems/${encodeURIComponent(pwsid)}`);
+    } catch (error) {
+      console.error(`Could not load system ${pwsid}:`, error);
+      return;
+    }
+    if (myToken !== selectToken) return; // a newer selection superseded this one
   }
   state.selected = record;
   renderDetail();
@@ -541,28 +607,39 @@ function renderTable() {
   els.prevPage.disabled = state.page <= 1;
   els.nextPage.disabled = state.page * state.pageSize >= state.total;
 
+  if (!rows.length) {
+    els.systemsTable.innerHTML = `<tr class="table-status"><td colspan="8">No systems match these filters.</td></tr>`;
+    return;
+  }
+
   els.systemsTable.innerHTML = rows.map(system => `
-    <tr data-pwsid="${system.pwsid}" class="${state.selected && state.selected.pwsid === system.pwsid ? "selected" : ""}">
-      <td>${system.rankStatewide}</td>
-      <td>${system.pwsid}</td>
-      <td>${system.name}</td>
-      <td>${system.county}</td>
+    <tr data-pwsid="${esc(system.pwsid)}" tabindex="0" role="button" aria-label="View detail for ${esc(system.name)}" class="${state.selected && state.selected.pwsid === system.pwsid ? "selected" : ""}">
+      <td>${esc(system.rankStatewide)}</td>
+      <td>${esc(system.pwsid)}</td>
+      <td>${esc(system.name)}</td>
+      <td>${esc(system.county)}</td>
       <td><strong>${formatScore(system.score)}</strong></td>
-      <td><span class="pill" style="background:${colors[system.tier]}">${system.tier}</span></td>
-      <td>${system.drivers[0]}</td>
-      <td>${String(system.spatialConfidence || "").replace(/_/g, " ")}</td>
+      <td><span class="pill" style="background:${colors[system.tier]}">${esc(system.tier)}</span></td>
+      <td>${esc((system.drivers?.[0]) ?? "")}</td>
+      <td>${esc(String(system.spatialConfidence || "").replace(/_/g, " "))}</td>
     </tr>
   `).join("");
 
   els.systemsTable.querySelectorAll("tr").forEach(row => {
     row.addEventListener("click", () => selectByPwsid(row.dataset.pwsid, true));
+    row.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectByPwsid(row.dataset.pwsid, true);
+      }
+    });
   });
 }
 
 function renderComponentBars(system) {
-  return Object.entries(system.components).map(([key, value]) => `
+  return Object.entries(system.components ?? {}).map(([key, value]) => `
     <div class="component-row">
-      <span>${componentLabels[key]}</span>
+      <span>${esc(componentLabels[key] || key)}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value || 0))}%;background:#14746f"></div></div>
       <strong>${formatScore(value)}</strong>
     </div>
@@ -571,7 +648,7 @@ function renderComponentBars(system) {
 
 function geographyEvidenceRow(label, value) {
   if (value === null || value === undefined || value === "") return "";
-  return `<div class="evidence-row"><span>${label}</span><strong>${value}</strong></div>`;
+  return `<div class="evidence-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
 }
 
 function renderGeographyEvidence(system) {
@@ -583,13 +660,13 @@ function renderGeographyEvidence(system) {
       <h4>Geography evidence</h4>
       ${geographyEvidenceRow("Primary geometry", primary)}
       ${geographyEvidenceRow("Source", tierLabel)}
-      ${geographyEvidenceRow("Boundary type", system.boundaryType ? system.boundaryType.replace("_", "-") : "n/a")}
+      ${geographyEvidenceRow("Boundary type", system.boundaryType ? system.boundaryType.replace(/_/g, "-") : "n/a")}
       ${geographyEvidenceRow("Provider", system.boundaryProvider || "n/a")}
-      ${geographyEvidenceRow("PWSID match", system.matchMethod ? system.matchMethod.replace("_", " ") : "n/a")}
+      ${geographyEvidenceRow("PWSID match", system.matchMethod ? system.matchMethod.replace(/_/g, " ") : "n/a")}
       ${matched ? geographyEvidenceRow("Service area", `${formatNumber(system.areaSqKm)} km²`) : ""}
       ${geographyEvidenceRow("Spatial confidence", String(system.spatialConfidence || "").replace(/_/g, " "))}
       ${geographyEvidenceRow("Source protection", system.sourceProtectionStatus === "available" ? `Available - ${prettyKinds(system.sourceProtectionKinds)}` : "None found")}
-      <p class="muted evidence-note">${system.spatialLimitationNote || ""}</p>
+      <p class="muted evidence-note">${esc(system.spatialLimitationNote || "")}</p>
     </div>
   `;
 }
@@ -605,25 +682,25 @@ function renderDetail() {
   els.systemDetail.innerHTML = `
     <div class="detail-title">
       <div>
-        <h3>${system.name}</h3>
-        <p class="muted">Rank ${system.rankStatewide} statewide | Rank ${system.rankCounty} in ${system.county}</p>
+        <h3>${esc(system.name)}</h3>
+        <p class="muted">Rank ${esc(system.rankStatewide)} statewide | Rank ${esc(system.rankCounty)} in ${esc(system.county)}</p>
       </div>
-      <span class="pill" style="background:${colors[system.tier]}">${system.tier}</span>
+      <span class="pill" style="background:${colors[system.tier]}">${esc(system.tier)}</span>
     </div>
     <div class="fact-grid">
       <div class="fact"><span>Score</span><strong>${formatScore(system.score)}</strong></div>
       <div class="fact"><span>Population</span><strong>${formatNumber(system.population)}</strong></div>
-      <div class="fact"><span>Size</span><strong>${system.sizeClass.replace("_", " ")}</strong></div>
-      <div class="fact"><span>Spatial confidence</span><strong>${system.spatialConfidence}</strong></div>
+      <div class="fact"><span>Size</span><strong>${esc(String(system.sizeClass || "").replace(/_/g, " "))}</strong></div>
+      <div class="fact"><span>Spatial confidence</span><strong>${esc(system.spatialConfidence)}</strong></div>
       <div class="fact"><span>Violations 36m</span><strong>${formatNumber(system.violations36m)}</strong></div>
       <div class="fact"><span>Enforcement 36m</span><strong>${formatNumber(system.enforcement36m)}</strong></div>
       <div class="fact"><span>SVI percentile</span><strong>${system.svi === null ? "--" : Math.round(system.svi * 100)}</strong></div>
-      <div class="fact"><span>Drought component</span><strong>${formatScore(system.components.drought_component)}</strong></div>
+      <div class="fact"><span>Drought component</span><strong>${formatScore(system.components?.drought_component)}</strong></div>
     </div>
     <div class="component-grid">${renderComponentBars(system)}</div>
     ${renderGeographyEvidence(system)}
-    <p>${system.explanation}</p>
-    <p class="muted">Funding match: ${system.fundingMatchConfidence}. ${system.fundingNotes}</p>
+    <p>${esc(system.explanation)}</p>
+    <p class="muted">Funding match: ${esc(system.fundingMatchConfidence)}. ${esc(system.fundingNotes)}</p>
   `;
 }
 
@@ -639,6 +716,7 @@ function render() {
 async function loadApp() {
   state.metadata = await api("/metadata");
   els.useNotice.textContent = state.metadata.useNote;
+  els.useNotice.hidden = false;
   els.sourceNote.textContent = state.metadata.sourceNote;
 
   initFilters(state.metadata);
@@ -648,5 +726,11 @@ async function loadApp() {
 }
 
 loadApp().catch(error => {
-  document.body.innerHTML = `<main class="app-shell"><div class="notice">The app could not reach its data API. ${error.message}</div></main>`;
+  const main = document.createElement("main");
+  main.className = "app-shell";
+  const notice = document.createElement("div");
+  notice.className = "notice";
+  notice.textContent = `The app could not reach its data API. ${error.message}`;
+  main.appendChild(notice);
+  document.body.replaceChildren(main);
 });
