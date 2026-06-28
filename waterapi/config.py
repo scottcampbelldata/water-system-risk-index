@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     water_api_port: int = 8000
     water_log_level: str = "INFO"
 
+    # Optional bearer token protecting GET /metrics. When empty (default) the
+    # endpoint is open, which is convenient for local/portfolio use; set it in
+    # production so request telemetry is not publicly readable.
+    water_metrics_token: str = ""
+
     # Comma-separated explicit CORS origins. localhost/127.0.0.1 on any port is
     # always allowed via a regex (see api/main.py) for local development.
     water_cors_origins: str = "https://water-risk.example.com"
@@ -41,10 +46,7 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_url(self) -> str:
-        return (
-            f"postgresql+psycopg://{self.pguser}:{self.pgpassword}"
-            f"@{self.pghost}:{self.pgport}/{self.pgdatabase}"
-        )
+        return f"postgresql+psycopg://{self.pguser}:{self.pgpassword}@{self.pghost}:{self.pgport}/{self.pgdatabase}"
 
     @property
     def cors_origins(self) -> list[str]:

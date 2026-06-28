@@ -1,8 +1,8 @@
 """Command-line entry points for database setup and seeding.
 
-    python -m waterapi.cli init-db   # create tables + indexes (idempotent)
-    python -m waterapi.cli load      # load data/processed/app_data.json into Postgres
-    python -m waterapi.cli serve     # run the API with uvicorn (dev convenience)
+python -m waterapi.cli init-db   # create tables + indexes (idempotent)
+python -m waterapi.cli load      # load data/processed/app_data.json into Postgres
+python -m waterapi.cli serve     # run the API with uvicorn (dev convenience)
 """
 
 from __future__ import annotations
