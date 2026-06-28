@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  tests:
-    name: Unit tests + validation gate
+  quality:
+    name: Lint, type-check, unit tests + validation gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +18,20 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-api.txt
-      - name: Run unit tests
-        run: python -m pytest -q
+          pip install -r requirements.txt -r requirements-api.txt -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Format check (ruff)
+        run: ruff format --check .
+      - name: Type check (mypy)
+        run: mypy
+      - name: Run unit tests with coverage
+        run: python -m pytest --cov=src --cov=waterapi --cov-report=term-missing --cov-report=xml
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
       - name: Validation gate (committed data quality report must be all-pass)
         run: |
           python - <<'PY'
@@ -61,7 +72,9 @@ jobs:
       - name: Install API dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-api.txt
+          pip install -r requirements-api.txt -r requirements-dev.txt
+      - name: Audit locked API dependencies for known CVEs
+        run: pip-audit -r requirements-api.lock.txt
       - name: Create schema and seed Postgres
         run: |
           python -m waterapi.cli init-db
@@ -72,14 +85,33 @@ jobs:
           from fastapi.testclient import TestClient
           from waterapi.api.main import app
           c = TestClient(app)
-          assert c.get("/health").json()["status"] == "ok"
+
+          # Liveness/readiness now checks the DB.
+          h = c.get("/health").json()
+          assert h["status"] == "ok" and h["database"] == "ok", h
+
           md = c.get("/metadata").json()
           assert md["validationPassCount"] == md["validationCheckCount"], "validation not all-pass"
+          # Derive the expected record count from the data, not a hardcoded constant,
+          # so a dataset refresh does not break CI.
+          expected_total = int(md["systemCount"]) if "systemCount" in md else None
+
           s = c.get("/summary").json()
-          assert s["total"] == 16339, s["total"]
+          total = s["total"]
+          assert total > 0, total
+          if expected_total is not None:
+              assert total == expected_total, (total, expected_total)
+
           g = s["geography"]
-          assert g["verifiedServiceAreas"] + g["modeledServiceAreas"] + g["approximateLocations"] + g["unmatchedGeography"] == 16339
-          assert len(c.get("/map/boundaries").json()["features"]) == 1077
-          assert c.get("/systems", params={"page_size": 1}).json()["total"] == 16339
+          assert g["verifiedServiceAreas"] + g["modeledServiceAreas"] + g["approximateLocations"] + g["unmatchedGeography"] == total
+
+          # Map boundaries are a subset (verified/modeled tiers only).
+          assert 0 < len(c.get("/map/boundaries").json()["features"]) <= total
+          assert c.get("/systems", params={"page_size": 1}).json()["total"] == total
+
+          # Behavioral checks for the new validation/error paths.
+          assert c.get("/systems", params={"sort": "bogus"}).status_code == 422
+          assert c.get("/systems/__nope__").status_code == 404
+          assert c.get("/map/boundaries", params={"bbox": "not-a-bbox"}).status_code == 400
           print("API smoke test passed")
           PY
