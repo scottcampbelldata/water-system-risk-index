@@ -7,17 +7,18 @@ browser only pulls what it displays.
 
 from __future__ import annotations
 
-from typing import Any
-
 import json
 import logging
+from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from waterapi import __version__
+from waterapi.api import models
 from waterapi.config import settings
 from waterapi.db.engine import get_engine
 from waterapi.observability import RequestLoggingMiddleware, metrics, setup_logging
@@ -91,8 +92,8 @@ def _bbox_clause(bbox: str | None, alias: str) -> tuple[str, dict[str, Any]]:
         return "", {}
     try:
         min_lon, min_lat, max_lon, max_lat = (float(x) for x in bbox.split(","))
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail="bbox must be 'minLon,minLat,maxLon,maxLat'")
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail="bbox must be 'minLon,minLat,maxLon,maxLat'") from exc
     clause = (
         f" AND {alias}.min_lon <= :qmaxlon AND {alias}.max_lon >= :qminlon"
         f" AND {alias}.min_lat <= :qmaxlat AND {alias}.max_lat >= :qminlat"
@@ -176,14 +177,34 @@ def _filters(
     return where, params
 
 
-@app.get("/health")
-def health() -> dict[str, Any]:
-    return {"status": "ok", "version": __version__}
+@app.get("/health", response_model=models.HealthResponse)
+def health(response: Response) -> dict[str, Any]:
+    """Readiness probe: also verifies database connectivity so a load balancer
+    sees 503 (not 200) when Postgres is unreachable or the pool is exhausted."""
+    try:
+        with get_engine().connect() as conn:
+            conn.execute(text("SELECT 1"))
+        database = "ok"
+    except SQLAlchemyError:
+        logger.warning("health check: database unreachable", exc_info=True)
+        response.status_code = 503
+        database = "unavailable"
+    return {"status": "ok" if database == "ok" else "degraded", "version": __version__, "database": database}
 
 
 @app.get("/metrics")
-def get_metrics() -> dict[str, Any]:
-    """Lightweight request metrics (counts, status classes, p50/p95 latency by route)."""
+def get_metrics(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    """Lightweight request metrics (counts, status classes, p50/p95 latency by route).
+
+    Open by default; if ``WATER_METRICS_TOKEN`` is configured, a matching
+    ``Authorization: Bearer <token>`` header is required so request telemetry is
+    not publicly readable in production.
+    """
+    token = settings.water_metrics_token
+    if token:
+        expected = f"Bearer {token}"
+        if authorization != expected:
+            raise HTTPException(status_code=401, detail="Missing or invalid metrics token")
     return metrics.snapshot()
 
 
@@ -192,46 +213,47 @@ def metadata() -> dict[str, Any]:
     engine = get_engine()
     with engine.connect() as conn:
         meta_row = conn.execute(text("SELECT data FROM app_metadata WHERE id = 1")).fetchone()
-        checks = conn.execute(
-            text(
-                "SELECT check_name, status, severity, rows_affected, notes "
-                "FROM validation_checks ORDER BY check_name"
+        if not meta_row:
+            raise HTTPException(status_code=503, detail="Metadata not loaded. Run the loader.")
+        checks = (
+            conn.execute(
+                text(
+                    "SELECT check_name, status, severity, rows_affected, notes "
+                    "FROM validation_checks ORDER BY check_name"
+                )
             )
-        ).mappings().all()
-    if not meta_row:
-        raise HTTPException(status_code=503, detail="Metadata not loaded. Run the loader.")
-    with engine.connect() as conn:
-        county_rows = conn.execute(
-            text("SELECT DISTINCT county FROM water_systems ORDER BY county")
-        ).scalars().all()
+            .mappings()
+            .all()
+        )
+        county_rows = conn.execute(text("SELECT DISTINCT county FROM water_systems ORDER BY county")).scalars().all()
     payload = dict(meta_row[0])
     payload["validation"] = [dict(check) for check in checks]
     payload["counties"] = list(county_rows)
     return payload
 
 
-@app.get("/tiers")
+@app.get("/tiers", response_model=list[models.TierCount])
 def tiers() -> list[dict[str, Any]]:
     """Statewide (unfiltered) tier counts, in dashboard tier order."""
     engine = get_engine()
     with engine.connect() as conn:
-        rows = conn.execute(
-            text("SELECT tier, COUNT(*) AS systems FROM water_systems GROUP BY tier")
-        ).mappings().all()
+        rows = conn.execute(text("SELECT tier, COUNT(*) AS systems FROM water_systems GROUP BY tier")).mappings().all()
     counts = {row["tier"]: row["systems"] for row in rows}
     return [{"tier": tier, "systems": int(counts.get(tier, 0))} for tier in TIER_ORDER]
 
 
-@app.get("/trends")
+@app.get("/trends", response_model=models.TrendsResponse)
 def trends() -> dict[str, Any]:
     """Change between the two most recent scoring snapshots: how many systems newly
     escalated to a higher-priority tier, with the largest score increases. Returns a
     graceful message until a second snapshot has been loaded."""
     engine = get_engine()
     with engine.connect() as conn:
-        dates = conn.execute(
-            text("SELECT DISTINCT score_date FROM score_snapshots ORDER BY score_date DESC LIMIT 2")
-        ).scalars().all()
+        dates = (
+            conn.execute(text("SELECT DISTINCT score_date FROM score_snapshots ORDER BY score_date DESC LIMIT 2"))
+            .scalars()
+            .all()
+        )
         if len(dates) < 2:
             return {
                 "snapshots": len(dates),
@@ -239,9 +261,10 @@ def trends() -> dict[str, Any]:
                 "message": "Trends become available once a second scoring snapshot is loaded.",
             }
         latest, prior = dates[0], dates[1]
-        rows = conn.execute(
-            text(
-                """
+        rows = (
+            conn.execute(
+                text(
+                    """
                 SELECT l.pwsid, w.name, w.county, l.score AS score_now, p.score AS score_prev,
                        l.tier AS tier_now, p.tier AS tier_prev
                 FROM score_snapshots l
@@ -249,9 +272,12 @@ def trends() -> dict[str, Any]:
                 LEFT JOIN water_systems w ON w.pwsid = l.pwsid
                 WHERE l.score_date = :latest
                 """
-            ),
-            {"latest": latest, "prior": prior},
-        ).mappings().all()
+                ),
+                {"latest": latest, "prior": prior},
+            )
+            .mappings()
+            .all()
+        )
 
     tier_rank = {tier: i for i, tier in enumerate(TIER_ORDER)}
     escalated = [r for r in rows if tier_rank.get(r["tier_now"], 99) < tier_rank.get(r["tier_prev"], 99)]
@@ -278,10 +304,10 @@ def trends() -> dict[str, Any]:
     }
 
 
-@app.get("/summary")
+@app.get("/summary", response_model=models.SummaryResponse)
 def summary(
-    q: str | None = None,
-    county: str | None = None,
+    q: str | None = Query(default=None, max_length=100),
+    county: str | None = Query(default=None, max_length=100),
     tier: str | None = None,
     size: str | None = None,
     geography: str | None = None,
@@ -290,9 +316,10 @@ def summary(
     where, params = _filters(q, county, tier, size, geography)
     engine = get_engine()
     with engine.connect() as conn:
-        metrics = conn.execute(
-            text(
-                f"""
+        agg = (
+            conn.execute(
+                text(
+                    f"""
                 SELECT
                     COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE tier IN ('Critical Review', 'High Review')) AS high_review,
@@ -304,19 +331,27 @@ def summary(
                     COUNT(*) FILTER (WHERE source_protection_status = 'available') AS source_protection_available
                 FROM water_systems{where}
                 """
-            ),
-            params,
-        ).mappings().one()
+                ),
+                params,
+            )
+            .mappings()
+            .one()
+        )
 
-        tier_rows = conn.execute(
-            text(f"SELECT tier, COUNT(*) AS systems FROM water_systems{where} GROUP BY tier"),
-            params,
-        ).mappings().all()
+        tier_rows = (
+            conn.execute(
+                text(f"SELECT tier, COUNT(*) AS systems FROM water_systems{where} GROUP BY tier"),
+                params,
+            )
+            .mappings()
+            .all()
+        )
         tier_counts = {row["tier"]: row["systems"] for row in tier_rows}
 
-        county_rows = conn.execute(
-            text(
-                f"""
+        county_rows = (
+            conn.execute(
+                text(
+                    f"""
                 SELECT county,
                        COUNT(*) FILTER (WHERE tier IN ('Critical Review', 'High Review')) AS high_review_systems
                 FROM water_systems{where}
@@ -325,52 +360,52 @@ def summary(
                 ORDER BY high_review_systems DESC, county ASC
                 LIMIT 12
                 """
-            ),
-            params,
-        ).mappings().all()
+                ),
+                params,
+            )
+            .mappings()
+            .all()
+        )
 
     return {
-        "total": int(metrics["total"]),
-        "highReview": int(metrics["high_review"]),
-        "criticalReview": int(metrics["critical_review"]),
+        "total": int(agg["total"]),
+        "highReview": int(agg["high_review"]),
+        "criticalReview": int(agg["critical_review"]),
         "geography": {
-            "verifiedServiceAreas": int(metrics["verified_service_areas"]),
-            "modeledServiceAreas": int(metrics["modeled_service_areas"]),
-            "approximateLocations": int(metrics["approximate_locations"]),
-            "unmatchedGeography": int(metrics["unmatched_geography"]),
-            "sourceProtectionAvailable": int(metrics["source_protection_available"]),
+            "verifiedServiceAreas": int(agg["verified_service_areas"]),
+            "modeledServiceAreas": int(agg["modeled_service_areas"]),
+            "approximateLocations": int(agg["approximate_locations"]),
+            "unmatchedGeography": int(agg["unmatched_geography"]),
+            "sourceProtectionAvailable": int(agg["source_protection_available"]),
         },
         "tiers": [{"tier": tier, "systems": int(tier_counts.get(tier, 0))} for tier in TIER_ORDER],
         "topCounties": [
-            {"county": row["county"], "highReviewSystems": int(row["high_review_systems"])}
-            for row in county_rows
+            {"county": row["county"], "highReviewSystems": int(row["high_review_systems"])} for row in county_rows
         ],
     }
 
 
-@app.get("/systems")
+@app.get("/systems", response_model=models.PaginatedSystems)
 def systems(
-    q: str | None = None,
-    county: str | None = None,
+    q: str | None = Query(default=None, max_length=100),
+    county: str | None = Query(default=None, max_length=100),
     tier: str | None = None,
     size: str | None = None,
     geography: str | None = None,
-    sort: str = "rank",
-    order: str = "asc",
+    sort: Literal["rank", "score", "name", "county", "tier", "population"] = "rank",
+    order: Literal["asc", "desc"] = "asc",
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=100, ge=1, le=500),
 ) -> dict[str, Any]:
     """Filtered, sorted, paginated systems plus the total match count."""
-    sort_column = SORT_COLUMNS.get(sort, "rank_statewide")
-    direction = "DESC" if order.lower() == "desc" else "ASC"
+    sort_column = SORT_COLUMNS[sort]
+    direction = "DESC" if order == "desc" else "ASC"
     where, params = _filters(q, county, tier, size, geography)
     offset = (page - 1) * page_size
 
     engine = get_engine()
     with engine.connect() as conn:
-        total = conn.execute(
-            text(f"SELECT COUNT(*) FROM water_systems{where}"), params
-        ).scalar_one()
+        total = conn.execute(text(f"SELECT COUNT(*) FROM water_systems{where}"), params).scalar_one()
         rows = conn.execute(
             text(
                 f"SELECT * FROM water_systems{where} "
@@ -410,13 +445,11 @@ def _geography_evidence(m: Any) -> dict[str, Any]:
     }
 
 
-@app.get("/systems/{pwsid}")
+@app.get("/systems/{pwsid}", response_model=models.SystemDetail)
 def system_detail(pwsid: str) -> dict[str, Any]:
     engine = get_engine()
     with engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT * FROM water_systems WHERE pwsid = :pwsid"), {"pwsid": pwsid}
-        ).fetchone()
+        row = conn.execute(text("SELECT * FROM water_systems WHERE pwsid = :pwsid"), {"pwsid": pwsid}).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail=f"System {pwsid} not found")
     payload = _system_to_dict(row)
@@ -424,10 +457,10 @@ def system_detail(pwsid: str) -> dict[str, Any]:
     return payload
 
 
-@app.get("/map/points")
+@app.get("/map/points", response_model=list[models.MapPoint])
 def map_points(
-    q: str | None = None,
-    county: str | None = None,
+    q: str | None = Query(default=None, max_length=100),
+    county: str | None = Query(default=None, max_length=100),
     tier: str | None = None,
     size: str | None = None,
     geography: str | None = None,
@@ -438,18 +471,22 @@ def map_points(
     where = f"{where} AND {coord_clause}" if where else f" WHERE {coord_clause}"
     engine = get_engine()
     with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                f"""
+        rows = (
+            conn.execute(
+                text(
+                    f"""
                 SELECT pwsid, name, county, latitude, longitude, tier, score,
                        rank_statewide, population, spatial_confidence, geometry_source_tier,
                        driver_1, driver_2
                 FROM water_systems{where}
                 ORDER BY rank_statewide ASC
                 """
-            ),
-            params,
-        ).mappings().all()
+                ),
+                params,
+            )
+            .mappings()
+            .all()
+        )
     return [
         {
             "pwsid": row["pwsid"],
@@ -469,10 +506,10 @@ def map_points(
     ]
 
 
-@app.get("/map/boundaries")
+@app.get("/map/boundaries", response_model=models.FeatureCollection)
 def map_boundaries(
-    q: str | None = None,
-    county: str | None = None,
+    q: str | None = Query(default=None, max_length=100),
+    county: str | None = Query(default=None, max_length=100),
     tier: str | None = None,
     size: str | None = None,
     geography: str | None = None,
@@ -489,9 +526,10 @@ def map_boundaries(
     params = {**params, **bbox_params}
     engine = get_engine()
     with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                f"""
+        rows = (
+            conn.execute(
+                text(
+                    f"""
                 SELECT b.pwsid, b.boundary_type, s.name, s.tier, s.geometry_source_tier, b.geometry
                 FROM water_system_boundaries b
                 JOIN (
@@ -501,9 +539,12 @@ def map_boundaries(
                 WHERE TRUE{bbox_clause}
                 ORDER BY s.tier
                 """
-            ),
-            params,
-        ).mappings().all()
+                ),
+                params,
+            )
+            .mappings()
+            .all()
+        )
 
     features = [
         {
@@ -525,10 +566,10 @@ def map_boundaries(
     return collection
 
 
-@app.get("/map/swap")
+@app.get("/map/swap", response_model=models.FeatureCollection)
 def map_swap(
-    q: str | None = None,
-    county: str | None = None,
+    q: str | None = Query(default=None, max_length=100),
+    county: str | None = Query(default=None, max_length=100),
     tier: str | None = None,
     size: str | None = None,
     geography: str | None = None,
@@ -550,18 +591,22 @@ def map_swap(
     params = {**params, **bbox_params}
     engine = get_engine()
     with engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                f"""
+        rows = (
+            conn.execute(
+                text(
+                    f"""
                 SELECT a.pwsid, a.area_kind, a.sys_name, a.area_sqkm, a.geometry
                 FROM water_system_swap_areas a
                 JOIN (SELECT pwsid FROM water_systems{where}) w ON a.pwsid = w.pwsid
                 WHERE TRUE{kind_clause}{bbox_clause}
                 ORDER BY a.area_kind
                 """
-            ),
-            params,
-        ).mappings().all()
+                ),
+                params,
+            )
+            .mappings()
+            .all()
+        )
 
     features = [
         {

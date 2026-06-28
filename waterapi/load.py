@@ -171,9 +171,7 @@ def load(seed_path: Path | None = None) -> int:
     """Replace all table contents from the seed JSON. Returns row count."""
     path = seed_path or settings.seed_path
     if not path.exists():
-        raise FileNotFoundError(
-            f"Seed file not found: {path}. Run 'python src/export_web_app_data.py' first."
-        )
+        raise FileNotFoundError(f"Seed file not found: {path}. Run 'python src/export_web_app_data.py' first.")
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     systems = payload.get("systems", [])
@@ -230,7 +228,9 @@ def load(seed_path: Path | None = None) -> int:
     engine = get_engine()
     with engine.begin() as conn:
         conn.execute(
-            text("TRUNCATE water_system_swap_areas, water_system_boundaries, water_systems, app_metadata, validation_checks")
+            text(
+                "TRUNCATE water_system_swap_areas, water_system_boundaries, water_systems, app_metadata, validation_checks"
+            )
         )
         if system_rows:
             conn.execute(SYSTEM_INSERT, system_rows)
@@ -264,7 +264,10 @@ def load(seed_path: Path | None = None) -> int:
             conn.execute(text("DELETE FROM score_snapshots WHERE score_date = :d"), {"d": score_date})
             conn.execute(
                 SNAPSHOT_INSERT,
-                [{"score_date": score_date, "pwsid": s["pwsid"], "score": s.get("score"), "tier": s.get("tier")} for s in systems],
+                [
+                    {"score_date": score_date, "pwsid": s["pwsid"], "score": s.get("score"), "tier": s.get("tier")}
+                    for s in systems
+                ],
             )
 
     print(
