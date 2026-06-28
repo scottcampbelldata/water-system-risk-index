@@ -15,6 +15,13 @@ build/
 venv/
 env/
 
+# Test / coverage artifacts
+.coverage
+coverage.xml
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
 # OS / editor
 .DS_Store
 Thumbs.db
