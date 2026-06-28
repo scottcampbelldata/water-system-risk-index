@@ -5,7 +5,6 @@ from __future__ import annotations
 from backtest import run_backtest
 from build_features import build_all_features
 from clean_water_systems import build_master
-from download_data import main as download_main
 from export_powerbi import export_powerbi
 from fairness_audit import run_fairness_audit
 from load_drought import load_drought

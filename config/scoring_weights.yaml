@@ -13,6 +13,11 @@ system_size_thresholds:
   medium_population_max: 10000
   note: Analytical portfolio thresholds for screening. They should be reviewed against EPA/state definitions before production use.
 
+# The six positive component weights sum to 1.0; the data-quality penalty has a
+# NEGATIVE weight, so it subtracts from the score. A system cannot reach the full
+# 100: the effective ceiling is ~95 (100 on every positive component, 0 penalty).
+# The penalty intentionally LOWERS review priority for poorly-documented systems
+# so the screen does not over-rank them on uncertain data. See docs/methodology.md.
 overall_weights:
   compliance_risk_component: 0.30
   enforcement_risk_component: 0.15

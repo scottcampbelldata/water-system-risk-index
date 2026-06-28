@@ -18,7 +18,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from utils import REPO_ROOT
+from utils import REPO_ROOT, load_yaml
 
 
 def _corr(a: pd.Series, b: pd.Series) -> float:
@@ -34,15 +34,23 @@ def run_fairness_audit() -> dict:
     df = risk.merge(geo[["pwsid", "overall_svi_percentile"]], on="pwsid", how="left")
     df = df[df["overall_svi_percentile"].notna()].copy()
 
-    weights = {"vulnerability_component": 0.20}
-    df["score_excl_vulnerability"] = df["overall_risk_score"] - df["vulnerability_component"] * weights["vulnerability_component"]
+    # Read the weight from the single source of truth so this audit stays correct
+    # if the vulnerability weight is retuned.
+    weights = load_yaml(REPO_ROOT / "config" / "scoring_weights.yaml")["overall_weights"]
+    df["score_excl_vulnerability"] = (
+        df["overall_risk_score"] - df["vulnerability_component"] * weights["vulnerability_component"]
+    )
 
     high = df["risk_tier"].isin(["Critical Review", "High Review"])
     df["svi_quartile"] = pd.qcut(df["overall_svi_percentile"], 4, labels=["Q1 (least)", "Q2", "Q3", "Q4 (most)"])
     by_quartile = (
         df.assign(high_review=high)
         .groupby("svi_quartile", observed=True)
-        .agg(systems=("pwsid", "count"), high_review_rate=("high_review", "mean"), mean_score=("overall_risk_score", "mean"))
+        .agg(
+            systems=("pwsid", "count"),
+            high_review_rate=("high_review", "mean"),
+            mean_score=("overall_risk_score", "mean"),
+        )
         .reset_index()
     )
 
@@ -65,7 +73,9 @@ def run_fairness_audit() -> dict:
             for row in by_quartile.itertuples(index=False)
         ],
     }
-    (REPO_ROOT / "data" / "processed" / "fairness_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    (REPO_ROOT / "data" / "processed" / "fairness_report.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8"
+    )
     print(json.dumps(report, indent=2))
     return report
 

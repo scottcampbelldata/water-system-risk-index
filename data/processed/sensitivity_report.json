@@ -5,8 +5,8 @@
   "monte_carlo": {
     "spearman_rank_correlation": {
       "mean": 0.9938,
-      "min": 0.9713,
-      "p05": 0.9815
+      "min": 0.9712,
+      "p05": 0.9814
     },
     "top100_retention": {
       "mean": 0.9475,
@@ -20,19 +20,19 @@
   },
   "component_influence_when_removed": {
     "compliance_risk_component": {
-      "spearman_vs_base": 0.9691,
+      "spearman_vs_base": 0.969,
       "top100_retained": 0.28
     },
     "enforcement_risk_component": {
-      "spearman_vs_base": 0.9866,
+      "spearman_vs_base": 0.9868,
       "top100_retained": 0.95
     },
     "vulnerability_component": {
-      "spearman_vs_base": 0.5879,
+      "spearman_vs_base": 0.5876,
       "top100_retained": 0.52
     },
     "drought_component": {
-      "spearman_vs_base": 0.7827,
+      "spearman_vs_base": 0.7825,
       "top100_retained": 0.79
     },
     "funding_gap_component": {
@@ -40,7 +40,7 @@
       "top100_retained": 1.0
     },
     "small_system_component": {
-      "spearman_vs_base": 0.972,
+      "spearman_vs_base": 0.9719,
       "top100_retained": 0.8
     },
     "data_quality_penalty": {

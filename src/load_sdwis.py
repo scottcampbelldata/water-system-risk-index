@@ -10,7 +10,6 @@ import pandas as pd
 
 from utils import REPO_ROOT, standardize_columns, write_dataframe
 
-
 SDWIS_TABLES = {
     "pub_water_systems": "SDWA_PUB_WATER_SYSTEMS.csv",
     "violations_enforcement": "SDWA_VIOLATIONS_ENFORCEMENT.csv",
@@ -34,7 +33,10 @@ def read_sdwis_table(zip_path: Path, member_name: str, state_prefix: str, chunks
             for chunk in pd.read_csv(file, dtype=str, chunksize=chunksize, low_memory=False):
                 if "PWSID" in chunk.columns:
                     chunk = chunk[chunk["PWSID"].fillna("").str.startswith(state_prefix)]
-                chunks.append(chunk)
+                # Most chunks of the national file have no rows for the target
+                # state; don't retain empty frames until the concat.
+                if not chunk.empty:
+                    chunks.append(chunk)
     if not chunks:
         return pd.DataFrame()
     return standardize_columns(pd.concat(chunks, ignore_index=True))

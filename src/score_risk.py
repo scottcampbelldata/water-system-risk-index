@@ -5,11 +5,9 @@ from __future__ import annotations
 import argparse
 from datetime import date
 
-import numpy as np
 import pandas as pd
 
 from utils import REPO_ROOT, clamp, load_yaml, write_dataframe
-
 
 COMPONENT_LABELS = {
     "compliance_risk_component": "recent compliance history",
@@ -73,6 +71,10 @@ def data_quality_penalty(row: pd.Series) -> float:
 
 
 def top_drivers(row: pd.Series) -> list[str]:
+    # Drivers explain why a system was *prioritized*, so we rank only the
+    # positive-weighted components. The data-quality penalty has a negative weight
+    # (it lowers the score to avoid over-ranking poorly-documented systems), so it
+    # is never a "driver" of higher priority and is excluded from this ranking.
     values = {
         "compliance_risk_component": row.get("compliance_risk_component", 0),
         "enforcement_risk_component": row.get("enforcement_risk_component", 0),
@@ -80,7 +82,6 @@ def top_drivers(row: pd.Series) -> list[str]:
         "drought_component": row.get("drought_component", 0),
         "funding_gap_component": row.get("funding_gap_component", 0),
         "small_system_component": row.get("small_system_component", 0),
-        "data_quality_penalty": row.get("data_quality_penalty", 0),
     }
     ordered = sorted(values.items(), key=lambda item: item[1], reverse=True)
     return [COMPONENT_LABELS[key] for key, value in ordered[:3]]
@@ -101,12 +102,21 @@ def explanation_text(row: pd.Series) -> str:
 
 
 def score_risk() -> pd.DataFrame:
-    weights = load_yaml(REPO_ROOT / "config" / "scoring_weights.yaml")["overall_weights"]
-    master = pd.read_csv(REPO_ROOT / "data" / "processed" / "water_system_master.csv", dtype={"pwsid": str, "county_fips": str})
-    compliance = pd.read_csv(REPO_ROOT / "data" / "processed" / "water_system_compliance_summary.csv", dtype={"pwsid": str})
-    enforcement = pd.read_csv(REPO_ROOT / "data" / "processed" / "water_system_enforcement_summary.csv", dtype={"pwsid": str})
+    config = load_yaml(REPO_ROOT / "config" / "scoring_weights.yaml")
+    weights = config["overall_weights"]
+    master = pd.read_csv(
+        REPO_ROOT / "data" / "processed" / "water_system_master.csv", dtype={"pwsid": str, "county_fips": str}
+    )
+    compliance = pd.read_csv(
+        REPO_ROOT / "data" / "processed" / "water_system_compliance_summary.csv", dtype={"pwsid": str}
+    )
+    enforcement = pd.read_csv(
+        REPO_ROOT / "data" / "processed" / "water_system_enforcement_summary.csv", dtype={"pwsid": str}
+    )
     funding = pd.read_csv(REPO_ROOT / "data" / "processed" / "water_system_funding_summary.csv", dtype={"pwsid": str})
-    geography = pd.read_csv(REPO_ROOT / "data" / "processed" / "water_system_geography.csv", dtype={"pwsid": str, "county_fips": str})
+    geography = pd.read_csv(
+        REPO_ROOT / "data" / "processed" / "water_system_geography.csv", dtype={"pwsid": str, "county_fips": str}
+    )
 
     df = (
         master.merge(compliance, on="pwsid", how="left")
@@ -131,10 +141,17 @@ def score_risk() -> pd.DataFrame:
         )
     )
 
-    for column in ["compliance_risk_component", "enforcement_risk_component", "vulnerability_component", "drought_component"]:
+    for column in [
+        "compliance_risk_component",
+        "enforcement_risk_component",
+        "vulnerability_component",
+        "drought_component",
+    ]:
         df[column] = clamp(pd.to_numeric(df[column], errors="coerce"))
     df["funding_gap_component"] = df.apply(
-        lambda row: funding_gap_component(str(row.get("funding_gap_flag", "")), str(row.get("funding_match_confidence", ""))),
+        lambda row: funding_gap_component(
+            str(row.get("funding_gap_flag", "")), str(row.get("funding_match_confidence", ""))
+        ),
         axis=1,
     )
     df["small_system_component"] = df["population_served"].map(small_system_component)
@@ -159,7 +176,7 @@ def score_risk() -> pd.DataFrame:
     df["top_risk_driver_1"] = drivers.map(lambda values: values[0])
     df["top_risk_driver_2"] = drivers.map(lambda values: values[1])
     df["top_risk_driver_3"] = drivers.map(lambda values: values[2])
-    df["model_version"] = load_yaml(REPO_ROOT / "config" / "scoring_weights.yaml")["model"]["version"]
+    df["model_version"] = config["model"]["version"]
     df["score_date"] = date.today().isoformat()
     df["explanation_text"] = df.apply(explanation_text, axis=1)
 

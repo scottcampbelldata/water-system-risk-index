@@ -103,13 +103,26 @@ def run_sensitivity(n_trials: int = N_TRIALS, perturb: float = PERTURB, seed: in
         "weight_perturbation": f"+/-{int(perturb * 100)}%",
         "top_k": TOP_K,
         "monte_carlo": {
-            "spearman_rank_correlation": {"mean": round(float(np.mean(spearmans)), 4), "min": round(float(np.min(spearmans)), 4), "p05": round(float(np.percentile(spearmans, 5)), 4)},
-            "top100_retention": {"mean": round(float(np.mean(retentions)), 4), "min": round(float(np.min(retentions)), 4), "p05": round(float(np.percentile(retentions, 5)), 4)},
-            "tier_change_rate": {"mean": round(float(np.mean(tier_changes)), 4), "max": round(float(np.max(tier_changes)), 4)},
+            "spearman_rank_correlation": {
+                "mean": round(float(np.mean(spearmans)), 4),
+                "min": round(float(np.min(spearmans)), 4),
+                "p05": round(float(np.percentile(spearmans, 5)), 4),
+            },
+            "top100_retention": {
+                "mean": round(float(np.mean(retentions)), 4),
+                "min": round(float(np.min(retentions)), 4),
+                "p05": round(float(np.percentile(retentions, 5)), 4),
+            },
+            "tier_change_rate": {
+                "mean": round(float(np.mean(tier_changes)), 4),
+                "max": round(float(np.max(tier_changes)), 4),
+            },
         },
         "component_influence_when_removed": one_at_a_time,
     }
-    (REPO_ROOT / "data" / "processed" / "sensitivity_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    (REPO_ROOT / "data" / "processed" / "sensitivity_report.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8"
+    )
     print(json.dumps(report, indent=2))
     return report
 

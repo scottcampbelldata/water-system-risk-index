@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 
-from state_config import target_state_fips
 from geography_tiers import LIMITATION_NOTES, TIER_TO_CONFIDENCE
 from load_srf import summarize_srf
-from utils import REPO_ROOT, clamp, parse_date_series, to_numeric, write_dataframe
-
+from state_config import target_state_fips
+from utils import REPO_ROOT, clamp, parse_date_series, write_dataframe
 
 VALID_OPEN_STATUSES = {"Addressed", "Unaddressed"}
 
@@ -70,17 +68,28 @@ def build_compliance_summary(master: pd.DataFrame) -> pd.DataFrame:
     viol = violation_base()
     rows = []
     today = pd.Timestamp.today().normalize()
+    # Compute the window cutoffs once (not per-row) for determinism and speed.
+    cutoff_12, cutoff_36, cutoff_60, cutoff_72 = (months_ago(m) for m in (12, 36, 60, 72))
+    # Group violations by PWSID once; an O(n) lookup per system instead of an
+    # O(n*m) full-frame scan (matters once the pipeline scales past Ohio).
+    by_pwsid = dict(tuple(viol.groupby("pwsid"))) if not viol.empty else {}
+    empty = viol.iloc[0:0] if not viol.empty else pd.DataFrame()
     for _, system in master.iterrows():
-        records = viol[viol["pwsid"].eq(system["pwsid"])] if not viol.empty else pd.DataFrame()
-        recent12 = records[records["violation_event_date"].ge(months_ago(12))]
-        recent36 = records[records["violation_event_date"].ge(months_ago(36))]
-        recent60 = records[records["violation_event_date"].ge(months_ago(60))]
-        previous24 = records[
-            records["violation_event_date"].lt(months_ago(36)) & records["violation_event_date"].ge(months_ago(60))
+        records = by_pwsid.get(system["pwsid"], empty)
+        recent12 = records[records["violation_event_date"].ge(cutoff_12)]
+        recent36 = records[records["violation_event_date"].ge(cutoff_36)]
+        recent60 = records[records["violation_event_date"].ge(cutoff_60)]
+        # Compare the most-recent 36 months against the prior 36 months
+        # (cutoff_72..cutoff_36) so the trend is an apples-to-apples, equal-length
+        # window comparison rather than 36m vs a shorter 24m window.
+        previous36 = records[
+            records["violation_event_date"].lt(cutoff_36) & records["violation_event_date"].ge(cutoff_72)
         ]
         last_date = records["violation_event_date"].max() if not records.empty else pd.NaT
         repeat_count = (
-            int(recent60.duplicated(["violation_code", "contaminant_code"], keep=False).sum()) if not recent60.empty else 0
+            int(recent60.duplicated(["violation_code", "contaminant_code"], keep=False).sum())
+            if not recent60.empty
+            else 0
         )
         open_flag = bool(recent60["is_open_violation"].any()) if not recent60.empty else False
         component = min(
@@ -99,16 +108,20 @@ def build_compliance_summary(master: pd.DataFrame) -> pd.DataFrame:
                 "total_violations_36m": int(len(recent36)),
                 "total_violations_60m": int(len(recent60)),
                 "health_based_violations_36m": int(recent36["is_health_based"].sum()) if not recent36.empty else 0,
-                "monitoring_reporting_violations_36m": int(recent36["is_monitoring_reporting"].sum()) if not recent36.empty else 0,
+                "monitoring_reporting_violations_36m": int(recent36["is_monitoring_reporting"].sum())
+                if not recent36.empty
+                else 0,
                 "repeat_violation_count_60m": repeat_count,
-                "max_violation_severity": float(recent60["violation_severity_score"].max()) if not recent60.empty else 0,
+                "max_violation_severity": float(recent60["violation_severity_score"].max())
+                if not recent60.empty
+                else 0,
                 "days_since_last_violation": int((today - last_date).days) if pd.notna(last_date) else pd.NA,
                 "returned_to_compliance_flag": bool(recent60["is_resolved"].any()) if not recent60.empty else False,
                 "open_violation_flag": open_flag,
                 "violation_trend_direction": "increasing"
-                if len(recent36) > len(previous24)
+                if len(recent36) > len(previous36)
                 else "decreasing"
-                if len(recent36) < len(previous24)
+                if len(recent36) < len(previous36)
                 else "stable_or_none",
                 "compliance_risk_component": round(component, 2),
             }
@@ -127,17 +140,26 @@ def build_enforcement_summary(master: pd.DataFrame) -> pd.DataFrame:
         enf["enforcement_date"] = parse_date_series(enf["enforcement_date"])
         enf = enf.drop_duplicates(["pwsid", "enforcement_id"])
     today = pd.Timestamp.today().normalize()
+    cutoff_36, cutoff_60 = months_ago(36), months_ago(60)
+    by_pwsid = dict(tuple(enf.groupby("pwsid"))) if not enf.empty else {}
+    empty = enf.iloc[0:0] if not enf.empty else pd.DataFrame()
 
     rows = []
     for _, system in master.iterrows():
-        records = enf[enf["pwsid"].eq(system["pwsid"])] if not enf.empty else pd.DataFrame()
-        recent36 = records[records["enforcement_date"].ge(months_ago(36))]
-        recent60 = records[records["enforcement_date"].ge(months_ago(60))]
+        records = by_pwsid.get(system["pwsid"], empty)
+        recent36 = records[records["enforcement_date"].ge(cutoff_36)]
+        recent60 = records[records["enforcement_date"].ge(cutoff_60)]
         formal = int(recent60["enf_action_category"].eq("Formal").sum()) if not recent60.empty else 0
         informal = int(recent60["enf_action_category"].eq("Informal").sum()) if not recent60.empty else 0
-        penalty = int(recent60["enforcement_action_type_code"].fillna("").str.contains("PEN|PN", case=False).sum()) if not recent60.empty else 0
+        penalty = (
+            int(recent60["enforcement_action_type_code"].fillna("").str.contains("PEN|PN", case=False).sum())
+            if not recent60.empty
+            else 0
+        )
         last_date = records["enforcement_date"].max() if not records.empty else pd.NaT
-        component = min(100, len(recent36) * 8 + formal * 16 + informal * 5 + penalty * 20 + (10 if len(recent36) else 0))
+        component = min(
+            100, len(recent36) * 8 + formal * 16 + informal * 5 + penalty * 20 + (10 if len(recent36) else 0)
+        )
         rows.append(
             {
                 "pwsid": system["pwsid"],
@@ -225,8 +247,8 @@ def build_geography(master: pd.DataFrame) -> pd.DataFrame:
     )
     geo["tract_geoid"] = pd.NA
     geo["spatial_confidence"] = geo["geometry_source_tier"].map(TIER_TO_CONFIDENCE)
-    geo["spatial_limitation_note"] = geo["geometry_source_tier"].map(LIMITATION_NOTES).fillna(
-        "Geometry source is screening-level context only."
+    geo["spatial_limitation_note"] = (
+        geo["geometry_source_tier"].map(LIMITATION_NOTES).fillna("Geometry source is screening-level context only.")
     )
     geo["geo_join_confidence"] = np.select(
         [matched, geo["geometry_source_tier"].eq("county_centroid")],
