@@ -3,17 +3,49 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0a1418" media="(prefers-color-scheme: dark)">
     <title>Water System Risk & Funding Priority Index</title>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=ui-1">
+    <script src="theme.js?v=ui-1"></script>
   </head>
   <body>
     <header class="app-header">
-      <div>
-        <p class="eyebrow">Ohio prototype</p>
-        <h1>Water System Risk & Funding Priority Index</h1>
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true" focusable="false">
+          <path d="M20 3C20 3 7 17.2 7 26a13 13 0 0 0 26 0C33 17.2 20 3 20 3Z" fill="currentColor" fill-opacity="0.12"/>
+          <path d="M20 3C20 3 7 17.2 7 26a13 13 0 0 0 26 0C33 17.2 20 3 20 3Z" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M11 27c2.2 0 2.2 2 4.5 2s2.3-2 4.5-2 2.2 2 4.5 2 2.3-2 4.5-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <p class="eyebrow">Ohio prototype &middot; review-priority screen</p>
+          <h1>Water System Risk &amp; Funding Priority Index</h1>
+          <div class="risk-gauge" aria-hidden="true">
+            <span class="risk-gauge-label">Calm</span>
+            <span class="risk-gauge-bar">
+              <i style="background:var(--tier-lower)"></i>
+              <i style="background:var(--tier-monitor)"></i>
+              <i style="background:var(--tier-moderate)"></i>
+              <i style="background:var(--tier-high)"></i>
+              <i style="background:var(--tier-critical)"></i>
+            </span>
+            <span class="risk-gauge-label">Critical</span>
+          </div>
+        </div>
       </div>
       <div class="header-actions">
+        <div class="segmented" id="themeControl" role="group" aria-label="Color theme">
+          <button type="button" data-theme-choice="system" aria-pressed="true" title="Match system theme">System</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false" title="Light theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke-linecap="round"/></svg>
+            <span class="sr-only">Light</span>
+          </button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false" title="Dark theme">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5Z"/></svg>
+            <span class="sr-only">Dark</span>
+          </button>
+        </div>
         <button class="ghost-button" id="resetFilters" type="button">Reset filters</button>
       </div>
     </header>
@@ -193,6 +225,6 @@
 
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=geo-5"></script>
+    <script src="app.js?v=ui-1"></script>
   </body>
 </html>

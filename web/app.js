@@ -65,13 +65,14 @@ function prettyKinds(value) {
   return value.split("|").map(k => swapKindLabels[k] || k.replace(/_/g, " ")).join(", ");
 }
 
+// Coherent calm -> alarm risk spectrum (the page's signature). Sequential, and
+// each value is dark enough for white pill/legend text to meet WCAG AA at 12px.
 const colors = {
-  "Critical Review": "#8f1f1f",
-  "High Review": "#a94328",
-  "Moderate Review": "#b98322",
-  "Monitor": "#285e8e",
-  // Darkened from #64748b so white pill/legend text meets WCAG AA (>= 4.5:1) at 12px.
-  "Lower Priority": "#475569"
+  "Critical Review": "#93202a",
+  "High Review": "#b14a26",
+  "Moderate Review": "#9a6b16",
+  "Monitor": "#1f7d86",
+  "Lower Priority": "#46687a"
 };
 
 const componentLabels = {
@@ -107,6 +108,7 @@ const els = {
   geographyFilter: document.getElementById("geographyFilter"),
   showAllMarkers: document.getElementById("showAllMarkers"),
   resetFilters: document.getElementById("resetFilters"),
+  themeControl: document.getElementById("themeControl"),
   tierLegend: document.getElementById("tierLegend"),
   overlayLegend: document.getElementById("overlayLegend"),
   tierChart: document.getElementById("tierChart"),
@@ -352,7 +354,7 @@ function renderBarChart(container, rows, valueKey, labelKey, colorFn) {
       <div class="bar-row">
         <span title="${esc(row[labelKey])}">${esc(row[labelKey])}</span>
         <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${color}"></div></div>
-        <strong>${formatNumber(row[valueKey])}</strong>
+        <strong class="bar-value">${formatNumber(row[valueKey])}</strong>
       </div>
     `;
   }).join("");
@@ -376,7 +378,7 @@ function renderCharts() {
     countyRows.length ? countyRows : [{ county: "No high-review records in filter", highReviewSystems: 0 }],
     "highReviewSystems",
     "county",
-    () => "#14746f"
+    () => "var(--accent)"
   );
 }
 
@@ -640,8 +642,8 @@ function renderComponentBars(system) {
   return Object.entries(system.components ?? {}).map(([key, value]) => `
     <div class="component-row">
       <span>${esc(componentLabels[key] || key)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value || 0))}%;background:#14746f"></div></div>
-      <strong>${formatScore(value)}</strong>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value || 0))}%;background:var(--accent)"></div></div>
+      <strong class="bar-value">${formatScore(value)}</strong>
     </div>
   `).join("");
 }
@@ -724,6 +726,38 @@ async function loadApp() {
   await applyFilters({ resetSelection: true });
   fitMapToOhio();
 }
+
+// Theme control: System / Light / Dark, persisted in localStorage. The pre-paint
+// attribute is set by theme.js; this wires the segmented control and keeps the
+// pressed state in sync. "system" clears the attribute so prefers-color-scheme
+// governs. Set up before loadApp so the toggle works even if the API is down.
+function setupTheme() {
+  const control = els.themeControl;
+  if (!control) return;
+  const buttons = Array.from(control.querySelectorAll("[data-theme-choice]"));
+  let stored = null;
+  try { stored = localStorage.getItem("theme"); } catch (e) { stored = null; }
+  let current = stored === "light" || stored === "dark" ? stored : "system";
+
+  const sync = () => buttons.forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.themeChoice === current)));
+
+  const apply = choice => {
+    current = choice;
+    if (choice === "light" || choice === "dark") {
+      document.documentElement.setAttribute("data-theme", choice);
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+    try { localStorage.setItem("theme", choice); } catch (e) { /* private mode */ }
+    sync();
+  };
+
+  buttons.forEach(b => b.addEventListener("click", () => apply(b.dataset.themeChoice)));
+  sync();
+}
+
+setupTheme();
 
 loadApp().catch(error => {
   const main = document.createElement("main");
