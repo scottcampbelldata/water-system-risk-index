@@ -1,0 +1,47 @@
+{
+  "n_systems": 16339,
+  "n_positive": 340,
+  "base_rate": 0.0208,
+  "auc": {
+    "weighted_index": 0.7403,
+    "prior36_violation_count_single_feature": 0.7335,
+    "compliance_component_single_feature": 0.7805
+  },
+  "A_index_vs_prior_violation_count": {
+    "point": 0.0069,
+    "ci95": [
+      -0.0147,
+      0.0293
+    ],
+    "p_first_wins": 0.722
+  },
+  "B_index_vs_own_compliance_component": {
+    "point": -0.0401,
+    "ci95": [
+      -0.0599,
+      -0.0211
+    ],
+    "p_first_wins": 0.0
+  },
+  "C_compliance_component_vs_prior_violation_count": {
+    "point": 0.047,
+    "ci95": [
+      0.031,
+      0.0622
+    ],
+    "p_first_wins": 1.0
+  },
+  "top_k_overlap_index_vs_prior_violations": {
+    "50": 0.32,
+    "100": 0.68,
+    "200": 0.785,
+    "500": 0.79
+  },
+  "top_k_overlap_index_vs_compliance_component": {
+    "50": 0.54,
+    "100": 0.71,
+    "200": 0.85,
+    "500": 0.854
+  },
+  "share_of_index_weight_that_is_prior_history": 0.45
+}
