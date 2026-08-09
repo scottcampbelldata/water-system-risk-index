@@ -154,13 +154,13 @@ def export_web_map_data() -> Path:
     for county_fips, group in systems.dropna(subset=["county_fips"]).groupby("county_fips"):
         top_by_county[county_fips] = [
             {
-                "pwsid": row.pwsid,
-                "name": row.pws_name,
-                "score": float(row.overall_risk_score),
-                "tier": row.risk_tier,
-                "rank": int(row.rank_statewide),
+                "pwsid": row["pwsid"],
+                "name": row["pws_name"],
+                "score": float(row["overall_risk_score"]),
+                "tier": row["risk_tier"],
+                "rank": int(row["rank_statewide"]),
             }
-            for row in group.sort_values(["rank_statewide", "pwsid"]).head(8).itertuples()
+            for row in group.sort_values(["rank_statewide", "pwsid"]).head(8).to_dict(orient="records")
         ]
 
     output = {

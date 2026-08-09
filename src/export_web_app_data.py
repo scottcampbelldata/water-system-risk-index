@@ -110,8 +110,7 @@ def export_web_app_data() -> Path:
         "small_system_component",
         "data_quality_penalty",
     ]
-    for row in df.itertuples(index=False):
-        record = row._asdict()
+    for record in df.to_dict(orient="records"):
         systems.append(
             {
                 "pwsid": clean_text(record["pwsid"]),
@@ -176,14 +175,14 @@ def export_web_app_data() -> Path:
     )
     counties = [
         {
-            "county": clean_text(row.county) or "Unknown",
-            "systems": int(row.systems),
-            "highReviewSystems": int(row.highReviewSystems),
-            "avgScore": round(float(row.avgScore), 2),
-            "populationServed": clean_number(row.populationServed),
-            "lowSpatialSystems": int(row.lowSpatialSystems),
+            "county": clean_text(row["county"]) or "Unknown",
+            "systems": int(row["systems"]),
+            "highReviewSystems": int(row["highReviewSystems"]),
+            "avgScore": round(float(row["avgScore"]), 2),
+            "populationServed": clean_number(row["populationServed"]),
+            "lowSpatialSystems": int(row["lowSpatialSystems"]),
         }
-        for row in county_summary.itertuples(index=False)
+        for row in county_summary.to_dict(orient="records")
     ]
 
     tier_order = ["Critical Review", "High Review", "Moderate Review", "Monitor", "Lower Priority"]
@@ -244,14 +243,14 @@ def export_boundaries_seed() -> Path:
     boundaries: dict[str, dict] = {}
     if web_path.exists():
         web = pd.read_parquet(web_path)
-        for row in web.itertuples(index=False):
-            boundaries[str(row.pwsid)] = {
-                "geometry": json.loads(row.geometry_geojson),
-                "boundaryType": clean_text(row.boundary_type),
-                "geometrySourceTier": clean_text(row.geometry_source_tier),
-                "boundaryProvider": clean_text(row.boundary_provider),
-                "matchMethod": clean_text(row.match_method),
-                "areaSqKm": clean_number(row.area_sqkm, 4),
+        for row in web.to_dict(orient="records"):
+            boundaries[str(row["pwsid"])] = {
+                "geometry": json.loads(row["geometry_geojson"]),
+                "boundaryType": clean_text(row["boundary_type"]),
+                "geometrySourceTier": clean_text(row["geometry_source_tier"]),
+                "boundaryProvider": clean_text(row["boundary_provider"]),
+                "matchMethod": clean_text(row["match_method"]),
+                "areaSqKm": clean_number(row["area_sqkm"], 4),
             }
     boundaries_path = REPO_ROOT / "data" / "processed" / "boundaries.json"
     boundaries_path.write_text(json.dumps(boundaries, separators=(",", ":"), ensure_ascii=True), encoding="utf-8")

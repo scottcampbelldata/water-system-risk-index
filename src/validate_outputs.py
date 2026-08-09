@@ -256,8 +256,12 @@ def validate_outputs() -> pd.DataFrame:
 
     try:
         features = [
-            {"type": "Feature", "properties": {"pwsid": row.pwsid}, "geometry": json.loads(row.geometry_geojson)}
-            for row in boundaries.itertuples()
+            {
+                "type": "Feature",
+                "properties": {"pwsid": record["pwsid"]},
+                "geometry": json.loads(record["geometry_geojson"]),
+            }
+            for record in boundaries.to_dict(orient="records")
         ]
         feature_collection = {"type": "FeatureCollection", "features": features}
         fc_valid = (

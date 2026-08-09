@@ -65,12 +65,12 @@ def run_fairness_audit() -> dict:
         "overall_mean_svi": round(float(df["overall_svi_percentile"].mean()), 4),
         "by_svi_quartile": [
             {
-                "quartile": str(row.svi_quartile),
-                "systems": int(row.systems),
-                "high_review_rate": round(float(row.high_review_rate), 4),
-                "mean_score": round(float(row.mean_score), 2),
+                "quartile": str(row["svi_quartile"]),
+                "systems": int(row["systems"]),
+                "high_review_rate": round(float(row["high_review_rate"]), 4),
+                "mean_score": round(float(row["mean_score"]), 2),
             }
-            for row in by_quartile.itertuples(index=False)
+            for row in by_quartile.to_dict(orient="records")
         ],
     }
     (REPO_ROOT / "data" / "processed" / "fairness_report.json").write_text(

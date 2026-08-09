@@ -209,20 +209,20 @@ def bootstrap_auc_delta(a: np.ndarray, b: np.ndarray, labels: np.ndarray, n: int
     """Paired bootstrap over systems of AUC(a) - AUC(b)."""
     rng = np.random.default_rng(SEED)
     m = len(labels)
-    deltas = []
+    deltas: list[float] = []
     for _ in range(n):
         idx = rng.integers(0, m, m)
         lb = labels[idx]
         if lb.sum() == 0 or lb.sum() == len(lb):
             continue
         deltas.append(roc_auc(a[idx], lb) - roc_auc(b[idx], lb))
-    deltas = np.array(deltas)
+    delta_array = np.asarray(deltas, dtype=float)
     return {
         "point_estimate": round(float(roc_auc(a, labels) - roc_auc(b, labels)), 4),
-        "ci95_low": round(float(np.percentile(deltas, 2.5)), 4),
-        "ci95_high": round(float(np.percentile(deltas, 97.5)), 4),
-        "share_of_resamples_where_index_wins": round(float((deltas > 0).mean()), 4),
-        "n_resamples": int(len(deltas)),
+        "ci95_low": round(float(np.percentile(delta_array, 2.5)), 4),
+        "ci95_high": round(float(np.percentile(delta_array, 97.5)), 4),
+        "share_of_resamples_where_index_wins": round(float((delta_array > 0).mean()), 4),
+        "n_resamples": int(len(delta_array)),
     }
 
 

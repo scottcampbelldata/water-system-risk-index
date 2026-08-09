@@ -100,8 +100,8 @@ def _bbox(geometry: dict | None) -> dict:
     lats: list[float] = []
 
     def walk(coords):
-        if isinstance(coords, (list, tuple)):
-            if coords and isinstance(coords[0], (int, float)):
+        if isinstance(coords, list | tuple):
+            if coords and isinstance(coords[0], int | float):
                 lons.append(coords[0])
                 lats.append(coords[1])
             else:

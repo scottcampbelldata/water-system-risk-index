@@ -41,18 +41,21 @@ def roc_auc(scores: np.ndarray, labels: np.ndarray) -> float:
 def boot_delta(a: np.ndarray, b: np.ndarray, labels: np.ndarray, n: int = 2000) -> dict:
     rng = np.random.default_rng(SEED)
     m = len(labels)
-    d = []
+    deltas: list[float] = []
     for _ in range(n):
         idx = rng.integers(0, m, m)
         lb = labels[idx]
         if lb.sum() in (0, len(lb)):
             continue
-        d.append(roc_auc(a[idx], lb) - roc_auc(b[idx], lb))
-    d = np.array(d)
+        deltas.append(roc_auc(a[idx], lb) - roc_auc(b[idx], lb))
+    delta_array = np.asarray(deltas, dtype=float)
     return {
         "point": round(float(roc_auc(a, labels) - roc_auc(b, labels)), 4),
-        "ci95": [round(float(np.percentile(d, 2.5)), 4), round(float(np.percentile(d, 97.5)), 4)],
-        "p_first_wins": round(float((d > 0).mean()), 4),
+        "ci95": [
+            round(float(np.percentile(delta_array, 2.5)), 4),
+            round(float(np.percentile(delta_array, 97.5)), 4),
+        ],
+        "p_first_wins": round(float((delta_array > 0).mean()), 4),
     }
 
 
