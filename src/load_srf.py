@@ -6,6 +6,7 @@ import argparse
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
+from typing import Any, cast
 
 import pandas as pd
 
@@ -13,7 +14,7 @@ from utils import REPO_ROOT, standardize_columns, write_dataframe
 
 
 def normalize_name(value: object) -> str:
-    text = "" if pd.isna(value) else str(value).upper()
+    text = "" if bool(pd.isna(cast(Any, value))) else str(value).upper()
     text = re.sub(r"\b(CITY|VILLAGE|TOWN|TOWNSHIP|COUNTY|WATER|DEPT|DEPARTMENT|AUTHORITY|BOARD|OF|THE)\b", " ", text)
     text = re.sub(r"[^A-Z0-9]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
@@ -53,8 +54,8 @@ def summarize_srf(master: pd.DataFrame | None = None) -> pd.DataFrame:
             recipient_name="",
             total_srf_funding_10y=0.0,
             project_count_10y=0,
-            most_recent_project_year=pd.NA,
-            years_since_last_funding=pd.NA,
+            most_recent_project_year=pd.Series(pd.NA, index=base.index, dtype="Int64"),
+            years_since_last_funding=pd.Series(pd.NA, index=base.index, dtype="Int64"),
             funding_gap_flag="unknown_no_staged_srf_record",
             funding_match_confidence="unmatched",
             funding_notes="No Ohio SRF portal export was staged; do not interpret this as proof that the system has no SRF funding.",
