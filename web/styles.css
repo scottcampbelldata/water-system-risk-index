@@ -7,20 +7,20 @@
 
 :root {
   /* Surfaces & text (light) */
-  --bg: #eef3f6;
+  --bg: #f4f4f1;
   --surface: #ffffff;
-  --surface-2: #e6eef2;
-  --ink: #0e1b21;
-  --muted: #586a72;
-  --line: #ccdae0;
+  --surface-2: #eaeeed;
+  --ink: #142329;
+  --muted: #56656a;
+  --line: #cdd5d4;
 
   /* Deep-water accent */
-  --accent: #0c7c8a;
-  --accent-strong: #095e69;
+  --accent: #006c80;
+  --accent-strong: #004e5d;
   --on-accent: #ffffff;
 
   /* State surfaces (tokenized so dark mode can override) */
-  --row-hover: #e2eef0;
+  --row-hover: #edf0ef;
   --notice-bg: #fbf3df;
   --notice-ink: #5b441a;
   --notice-edge: #c98a1f;
@@ -29,11 +29,11 @@
   --error-edge: #a32525;
 
   /* Coherent risk spectrum (calm -> alarm); white-text-safe on both themes. */
-  --tier-lower: #46687a;
-  --tier-monitor: #1f7d86;
-  --tier-moderate: #9a6b16;
-  --tier-high: #b14a26;
-  --tier-critical: #93202a;
+  --tier-lower: #526875;
+  --tier-monitor: #0f7180;
+  --tier-moderate: #8b6a1d;
+  --tier-high: #a24e2d;
+  --tier-critical: #8b3542;
 
   /* Depth/elevation */
   --shadow: 0 1px 2px rgba(14, 27, 33, 0.06), 0 8px 24px rgba(14, 27, 33, 0.05);
@@ -51,16 +51,16 @@
 /* System dark mode (no explicit choice) follows the OS. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0a1418;
-    --surface: #102229;
-    --surface-2: #16303a;
-    --ink: #e8f1f3;
-    --muted: #8ba3ab;
-    --line: #22414b;
-    --accent: #36c0cc;
-    --accent-strong: #5fd3dd;
-    --on-accent: #04181c;
-    --row-hover: #1a3640;
+    --bg: #101719;
+    --surface: #182326;
+    --surface-2: #202f33;
+    --ink: #edf2f1;
+    --muted: #a3b0b1;
+    --line: #314348;
+    --accent: #70c3d3;
+    --accent-strong: #9ad6e1;
+    --on-accent: #101719;
+    --row-hover: #26373b;
     --notice-bg: #2a2410;
     --notice-ink: #e7d59c;
     --notice-edge: #b88a2a;
@@ -75,16 +75,16 @@
 
 /* Explicit dark choice forces dark regardless of OS. */
 :root[data-theme="dark"] {
-  --bg: #0a1418;
-  --surface: #102229;
-  --surface-2: #16303a;
-  --ink: #e8f1f3;
-  --muted: #8ba3ab;
-  --line: #22414b;
-  --accent: #36c0cc;
-  --accent-strong: #5fd3dd;
-  --on-accent: #04181c;
-  --row-hover: #1a3640;
+  --bg: #101719;
+  --surface: #182326;
+  --surface-2: #202f33;
+  --ink: #edf2f1;
+  --muted: #a3b0b1;
+  --line: #314348;
+  --accent: #70c3d3;
+  --accent-strong: #9ad6e1;
+  --on-accent: #101719;
+  --row-hover: #26373b;
   --notice-bg: #2a2410;
   --notice-ink: #e7d59c;
   --notice-edge: #b88a2a;
