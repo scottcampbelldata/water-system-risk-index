@@ -4,13 +4,13 @@
   <style>
     .ground { fill: #fbfbf9 }
     .rule   { fill: #a3a39c }
-    .s1 { fill: #c9c9c2 } .s2 { fill: #96968e } .s3 { fill: #6a6a63 }
-    .s4 { fill: #d1442a } .s5 { fill: #7a1508 }
+    .s1 { fill: #ccd1d0 } .s2 { fill: #9aa1a0 } .s3 { fill: #676e6d }
+    .s4 { fill: #d6006b } .s5 { fill: #7a0039 }
     @media (prefers-color-scheme: dark) {
       .ground { fill: #0e1113 }
       .rule   { fill: #49514f }
-      .s1 { fill: #333a3b } .s2 { fill: #565f60 } .s3 { fill: #88918f }
-      .s4 { fill: #e08a2c } .s5 { fill: #ff5330 }
+      .s1 { fill: #343b3c } .s2 { fill: #575f60 } .s3 { fill: #848d8c }
+      .s4 { fill: #ff3d93 } .s5 { fill: #ff85bd }
     }
   </style>
   <rect class="ground" width="32" height="32"/>

@@ -59,11 +59,11 @@
      is NOT carried here: the tier mark's notch count carries it, in ink, so the
      ranking survives greyscale and colour-blindness on its own. That frees the
      ramp to be a real signal rather than a set of muted steps. */
-  --tier-lower: #c9c9c2;
-  --tier-monitor: #96968e;
-  --tier-moderate: #6a6a63;
-  --tier-high: #d1442a;
-  --tier-critical: #7a1508;
+  --tier-lower: #ccd1d0;
+  --tier-monitor: #9aa1a0;
+  --tier-moderate: #676e6d;
+  --tier-high: #d6006b;
+  --tier-critical: #7a0039;
 
   --flag-ink: #6d2f1f;
   --flag-field: #e8ded6;
@@ -79,14 +79,20 @@
   --ov-fallback: #5a5f58;
   --ov-swatch-edge: rgba(12, 12, 11, 0.28);
 
-  /* Choropleth ramp for the opening plate, low score to high. */
-  --c1: #f0eee7;
-  --c2: #e7d8c2;
-  --c3: #e0b993;
-  --c4: #d79366;
-  --c5: #c96a41;
-  --c6: #a3341a;
-  --c-land: #e6e4dc;
+  /* Choropleth ramp: pure neutral, low score to high. Score reads as ink
+     density, the way the rest of the sheet works. No warm cast, because
+     cream-to-clay is the documented AI-default family. */
+  --c1: #eef0ef;
+  --c2: #d3d8d7;
+  --c3: #b0b7b6;
+  --c4: #8a9291;
+  --c5: #636b6a;
+  --c6: #3c4241;
+  --c-land: #e4e7e6;
+
+  /* The one saturated colour on the page. Reserved for high-review marks and
+     the alarm end of the review ramp; never used decoratively. */
+  --signal: #d6006b;
 
   --map-tile-filter: none;
   --hair: 1px;
@@ -109,22 +115,24 @@
     --rule-strong: #49514f;
 
     /* On dark stock the ramp climbs into light rather than into ink. */
-    --tier-lower: #333a3b;
-    --tier-monitor: #565f60;
-    --tier-moderate: #88918f;
-    --tier-high: #e08a2c;
-    --tier-critical: #ff5330;
+    --tier-lower: #343b3c;
+    --tier-monitor: #575f60;
+    --tier-moderate: #848d8c;
+    --tier-high: #ff3d93;
+    --tier-critical: #ff85bd;
 
     --flag-ink: #ffa88f;
     --flag-field: #2a1714;
 
-    --c1: #1e2325;
-    --c2: #37291f;
-    --c3: #56371f;
-    --c4: #7d4823;
-    --c5: #b25c26;
-    --c6: #ff5330;
-    --c-land: #1a1e20;
+    --c1: #1b2022;
+    --c2: #2b3234;
+    --c3: #414a4c;
+    --c4: #5c6567;
+    --c5: #7d8688;
+    --c6: #a8b2b4;
+    --c-land: #191d1f;
+
+    --signal: #ff3d93;
 
     --ov-verified: #4fd1c5;
     --ov-modeled: #e3b341;
@@ -155,22 +163,24 @@
   --rule: #282e30;
   --rule-strong: #49514f;
 
-  --tier-lower: #333a3b;
-  --tier-monitor: #565f60;
-  --tier-moderate: #88918f;
-  --tier-high: #e08a2c;
-  --tier-critical: #ff5330;
+  --tier-lower: #343b3c;
+  --tier-monitor: #575f60;
+  --tier-moderate: #848d8c;
+  --tier-high: #ff3d93;
+  --tier-critical: #ff85bd;
 
   --flag-ink: #ffa88f;
   --flag-field: #2a1714;
 
-  --c1: #1e2325;
-  --c2: #37291f;
-  --c3: #56371f;
-  --c4: #7d4823;
-  --c5: #b25c26;
-  --c6: #ff5330;
-  --c-land: #1a1e20;
+  --c1: #1b2022;
+  --c2: #2b3234;
+  --c3: #414a4c;
+  --c4: #5c6567;
+  --c5: #7d8688;
+  --c6: #a8b2b4;
+  --c-land: #191d1f;
+
+  --signal: #ff3d93;
 
   --ov-verified: #4fd1c5;
   --ov-modeled: #e3b341;
@@ -550,9 +560,9 @@ thead th,
 }
 
 .county-mark {
-  fill: var(--ink);
+  fill: var(--signal);
   stroke: var(--paper);
-  stroke-width: 0.8;
+  stroke-width: 0.9;
   pointer-events: none;
 }
 
