@@ -436,6 +436,15 @@ function renderMetrics() {
       );
     }
     els.findingCluster.textContent = sentences.join(" ");
+
+    // The plate's accessible name carries a live figure, not a baked-in one.
+    const host = document.getElementById("heroMap");
+    if (host && counties.length) {
+      host.setAttribute("aria-label",
+        `Map of Ohio's 88 counties shaded by average review-priority score, with counties ` +
+        `holding high-review systems marked. ${counties[0].county} County leads with ` +
+        `${counties[0].highReviewSystems}. Exact county figures are in the ranked county list below.`);
+    }
   }
 
   const geo = summary.geography || {};
