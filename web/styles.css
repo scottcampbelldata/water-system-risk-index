@@ -350,10 +350,16 @@ a:hover {
    keyboard user keeps their place. A full ring around a whole panel reads as a
    card, which this system does not have; the same left bar the selected table
    row uses carries it instead. */
+/* A short mark at the panel's top-left corner. A full-height inset bar on a
+   750px panel reads as a layout error, and an outline would draw the box this
+   system does not have. */
 #system-detail:focus-visible,
 #ranked-systems:focus-visible {
   outline: none;
-  box-shadow: inset 3px 0 0 var(--ink);
+  background-image: linear-gradient(var(--ink) 0 0);
+  background-repeat: no-repeat;
+  background-size: 3px 40px;
+  background-position: left top;
 }
 
 h1,
@@ -833,13 +839,6 @@ tbody td:nth-child(3) {
   max-width: 24ch;
 }
 
-.system-link {
-  display: block;
-  max-width: 24ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .panel-record {
   position: sticky;
@@ -1346,6 +1345,11 @@ tbody tr:hover td {
 
 tbody tr.selected td {
   background: var(--field);
+}
+
+/* One bar on the row, not one per cell. The old rule put an inset shadow on
+   every td, which drew a black line at every column boundary. */
+tbody tr.selected td:first-child {
   box-shadow: inset 3px 0 0 var(--ink);
 }
 
@@ -1359,29 +1363,7 @@ td.rank {
   font-weight: var(--w-semi);
 }
 
-.system-link {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  text-align: left;
-  font: inherit;
-  font-weight: var(--w-semi);
-  color: var(--ink);
-  cursor: pointer;
-  border-bottom: var(--hair) solid var(--rule-strong);
-}
 
-.system-link:hover {
-  border-bottom-color: var(--ink);
-}
-
-/* The row button is the page's primary interaction. Padding plus a matching
-   negative margin grows the hit area to the full row without changing layout. */
-.system-link {
-  padding: var(--s-3) 0;
-  margin: calc(var(--s-3) * -1) 0;
-}
 
 /* Coarse pointers get real targets. Fine pointers keep the dense reading. */
 @media (pointer: coarse) {
@@ -1408,6 +1390,52 @@ td.rank {
     height: 40px;
     line-height: 40px;
   }
+}
+
+.system-link {
+  appearance: none;
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  font-weight: var(--w-semi);
+  font-variant-numeric: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Padding plus a matching negative margin grows the hit area to the full row
+     without changing row height. */
+  padding: var(--s-3) 0;
+  margin: calc(var(--s-3) * -1) 0;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.12s linear;
+}
+
+.system-link:hover,
+.system-link:focus-visible {
+  text-decoration-color: var(--ink);
+}
+
+/* Column widths. Rank and score are narrow and numeric; the system name gets
+   whatever is left rather than being truncated while Rank holds empty space. */
+thead th:nth-child(1) { width: 4ch; }
+thead th:nth-child(2) { width: 11ch; }
+thead th:nth-child(4) { width: 12ch; }
+thead th:nth-child(5) { width: 7ch; }
+thead th:nth-child(6) { width: 16ch; }
+
+td.rank,
+td.num,
+th:nth-child(1),
+th:nth-child(5) {
+  text-align: right;
+  padding-right: var(--s-4);
 }
 
 .table-status td {
@@ -1485,6 +1513,7 @@ td.rank {
 .fact > span {
   display: block;
   margin-bottom: var(--s-1);
+  min-height: 2.6em;
 }
 
 .fact > strong {
@@ -1502,7 +1531,12 @@ td.rank {
 }
 
 .component-row .bar-fill {
-  background: var(--ink-2);
+  height: 6px;
+  background: var(--ink-3);
+}
+
+.component-row .bar-track {
+  height: 6px;
 }
 
 .component-weight {
