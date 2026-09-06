@@ -1662,8 +1662,7 @@ td.rank {
 /* ------------------------------------------------------------ responsive */
 
 @media (max-width: 1080px) {
-  .survey-grid,
-  .instrument-grid {
+  .survey-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 34px;
   }
@@ -1694,7 +1693,15 @@ td.rank {
   }
 }
 
+/* The table sheds two columns under 860px of panel width, so the list and the
+   record still sit side by side here. Collapsing both bands at 1080 handed
+   every tablet and small laptop the single stacked column. */
 @media (max-width: 900px) {
+  .instrument-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 34px;
+  }
+
   .hero {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
