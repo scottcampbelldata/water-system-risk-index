@@ -1319,6 +1319,40 @@ td.rank {
   border-bottom-color: var(--ink);
 }
 
+/* The row button is the page's primary interaction. Padding plus a matching
+   negative margin grows the hit area to the full row without changing layout. */
+.system-link {
+  padding: 10px 0;
+  margin: -10px 0;
+}
+
+/* Coarse pointers get real targets. Fine pointers keep the dense reading. */
+@media (pointer: coarse) {
+  .text-button,
+  .jump a,
+  .switch button,
+  details.disclosure > summary {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .toggle-label {
+    min-height: 44px;
+  }
+
+  .toggle-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .leaflet-bar a {
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+  }
+}
+
 .table-status td {
   padding: 22px 0;
   color: var(--ink-3);
@@ -1384,7 +1418,6 @@ td.rank {
 .fact-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  border-top: var(--hair) solid transparent;
 }
 
 .fact {
@@ -1484,6 +1517,27 @@ td.rank {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+/* Emitted by app.js for map popups and secondary popup text. Without these the
+   popup h3 fell back to the browser's ~21px bold inside 13px popup body. */
+.map-popup h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-stretch: 92%;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.map-popup p {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.muted {
+  color: var(--ink-3);
 }
 
 /* ------------------------------------------------------------------ notes */
@@ -1741,16 +1795,44 @@ td.rank {
 }
 
 @media print {
+  /* Re-declare the light tokens. Descendants all name --ink / --ink-2 / --ink-3
+     directly, so a body colour never reaches them; without this, printing while
+     the dark theme is active puts #eceae3 text on white paper. */
+  :root,
+  :root[data-theme="dark"] {
+    --paper: #ffffff;
+    --paper-warm: #ffffff;
+    --paper-cool: #ffffff;
+    --field: #f2f2ef;
+    --ink: #111111;
+    --ink-2: #3a3a37;
+    --ink-3: #5c5c58;
+    --rule: #c9c9c3;
+    --rule-strong: #8e8e88;
+    --map-tile-filter: none;
+    color-scheme: light;
+  }
+
   .masthead,
   .switch,
   .text-button,
   .jump,
-  .map-tools {
+  .map-tools,
+  .pager {
     display: none;
   }
 
   body {
     background: #ffffff;
+    background-image: none;
     color: #111111;
+  }
+
+  /* Scrollers must not clip their content onto one page. */
+  .table-wrap,
+  .panel-record {
+    max-height: none;
+    overflow: visible;
+    position: static;
   }
 }
