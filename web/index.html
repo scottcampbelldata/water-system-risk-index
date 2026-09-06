@@ -3,233 +3,287 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f4f4f1" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#101719" media="(prefers-color-scheme: dark)">
-    <title>Water System Risk & Funding Priority Index</title>
+    <meta name="theme-color" content="#fbfbf9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0e1113" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="An explainable public-data screening index that ranks Ohio public drinking water systems for review priority. Every score decomposes into seven weighted components.">
+    <title>Water System Risk &amp; Funding Priority Index</title>
+    <link rel="preconnect" href="https://water-api.scottcampbell.io" crossorigin>
+    <link rel="preconnect" href="https://a.tile.openstreetmap.org">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="preload" href="fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=ui-2">
+    <link rel="stylesheet" href="styles.css?v=abstract-1">
     <script src="theme.js?v=ui-1"></script>
   </head>
   <body>
-    <a class="skip-link" href="#searchInput">Skip to system search</a>
-    <header class="app-header">
-      <div class="brand">
-        <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true" focusable="false">
-          <path d="M20 3C20 3 7 17.2 7 26a13 13 0 0 0 26 0C33 17.2 20 3 20 3Z" fill="currentColor" fill-opacity="0.12"/>
-          <path d="M20 3C20 3 7 17.2 7 26a13 13 0 0 0 26 0C33 17.2 20 3 20 3Z" stroke="currentColor" stroke-width="1.8"/>
-          <path d="M11 27c2.2 0 2.2 2 4.5 2s2.3-2 4.5-2 2.2 2 4.5 2 2.3-2 4.5-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
-        <div>
-          <h1>Water System Risk &amp; Funding Priority Index</h1>
-          <p class="app-purpose">Ohio screening prototype. Review priority, not a drinking-water safety assessment.</p>
+    <a class="skip-link" href="#ranked-systems">Skip to the ranked list</a>
+
+    <header class="masthead">
+      <div class="masthead-inner">
+        <h1 class="volume-title" translate="no">Water System Risk &amp; Funding Priority Index</h1>
+        <div class="masthead-meta">
+          <p class="edition" id="editionLine">Ohio</p>
+          <div class="switch" id="themeControl" role="group" aria-label="Colour theme">
+            <button type="button" data-theme-choice="system" aria-pressed="true">Auto</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
         </div>
-      </div>
-      <div class="header-actions">
-        <div class="segmented" id="themeControl" role="group" aria-label="Color theme">
-          <button type="button" data-theme-choice="system" aria-pressed="true" title="Match system theme">System</button>
-          <button type="button" data-theme-choice="light" aria-pressed="false" title="Light theme">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke-linecap="round"/></svg>
-            <span class="sr-only">Light</span>
-          </button>
-          <button type="button" data-theme-choice="dark" aria-pressed="false" title="Dark theme">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5Z"/></svg>
-            <span class="sr-only">Dark</span>
-          </button>
-        </div>
-        <button class="ghost-button" id="resetFilters" type="button">Reset filters</button>
       </div>
     </header>
 
-    <main class="app-shell">
-      <section class="summary-grid" aria-label="Executive summary">
-        <div class="metric">
-          <span>Total records</span>
-          <strong id="metricTotal">--</strong>
-        </div>
-        <div class="metric">
-          <span>High review</span>
-          <strong id="metricHigh">--</strong>
-        </div>
-        <div class="metric">
-          <span>Critical review</span>
-          <strong id="metricCritical">--</strong>
-        </div>
-        <div class="metric">
-          <span>Validation checks passed</span>
-          <strong id="metricValidation">--</strong>
-        </div>
-      </section>
+    <main class="app app-shell" id="app">
+      <div class="sheet">
 
-      <details class="coverage-details">
-      <summary>Geography coverage and screening context</summary>
-      <section class="geography-grid" aria-label="Geography coverage">
-        <div class="metric">
-          <span>System-sourced service areas</span>
-          <strong id="geoVerified">--</strong>
-        </div>
-        <div class="metric">
-          <span>Modeled service areas</span>
-          <strong id="geoModeled">--</strong>
-        </div>
-        <div class="metric">
-          <span>Approximate locations</span>
-          <strong id="geoApproximate">--</strong>
-        </div>
-        <div class="metric">
-          <span>Unmatched geography</span>
-          <strong id="geoUnmatched">--</strong>
-        </div>
-        <div class="metric">
-          <span>Source-protection coverage</span>
-          <strong id="geoSourceProtection">--</strong>
-        </div>
-      </section>
+        <!-- The finding, carried by the state map it describes. -->
+        <section class="finding" aria-labelledby="finding-heading">
+          <h2 class="sr-only" id="finding-heading">Principal finding</h2>
 
-      <section class="notice" id="useNotice" hidden></section>
-      </details>
-      <section class="notice notice-error" id="errorBanner" role="alert" hidden></section>
-
-      <section class="filters" aria-label="Dashboard filters">
-        <label class="search-filter">
-          Search
-          <input id="searchInput" type="search" placeholder="PWSID, system name, county">
-        </label>
-        <label>
-          County
-          <select id="countyFilter"></select>
-        </label>
-        <label>
-          Risk tier
-          <select id="tierFilter"></select>
-        </label>
-        <details class="advanced-filters">
-        <summary>More filters</summary>
-        <div class="advanced-filter-fields">
-        <label>
-          System size
-          <select id="sizeFilter"></select>
-        </label>
-        <label>
-          Geography
-          <select id="geographyFilter"></select>
-        </label>
-        </div>
-        </details>
-      </section>
-      <nav class="view-links" aria-label="Dashboard views">
-        <a href="#screening-map">Map</a>
-        <a href="#ranked-systems">Browse ranked systems</a>
-        <a href="#system-detail">Selected system</a>
-        <a href="#methodology">Methodology</a>
-      </nav>
-
-      <section class="dashboard-grid">
-        <div class="panel map-panel" id="screening-map">
-          <div class="panel-header">
-            <div>
-              <h2>Statewide Screening Map</h2>
-              <p id="mapSubtitle">Zoomable street map with public water system records plotted by best available coordinates.</p>
+          <div class="hero">
+            <div class="hero-text">
+              <p class="finding-statement">
+                <b id="metricHigh">&nbsp;</b> of Ohio&rsquo;s <b id="metricTotal">&nbsp;</b>
+                public drinking water systems rank <b>High Review</b>.
+              </p>
+              <p class="finding-note" id="findingCluster"></p>
+              <p class="finding-source" id="sourceNote"></p>
             </div>
-            <div class="map-tools">
-              <label class="toggle-label">
-                <input id="showAllMarkers" type="checkbox">
-                Show review-priority only
-              </label>
-              <div class="legend" id="tierLegend"></div>
-            </div>
+
+            <figure class="hero-plate plate">
+              <div id="heroMap" role="img"
+                   aria-label="Map of Ohio's 88 counties shaded by average review-priority score. Counties holding high-review systems are marked, the largest being Columbiana."></div>
+              <figcaption class="hero-caption">
+                <span class="hero-caption-label">Average review-priority score by county</span>
+                <span class="hero-scale" id="heroScale" aria-hidden="true"></span>
+                <span class="hero-readout" id="heroReadout"></span>
+              </figcaption>
+            </figure>
           </div>
-          <div id="streetMap" aria-label="Ohio systems street map"></div>
-          <div id="overlayLegend" class="overlay-legend" aria-label="Map overlay legend" hidden></div>
-        </div>
 
-        <div class="panel">
-          <div class="panel-header">
+          <dl class="ledger settles">
             <div>
-              <h2>Risk Tiers</h2>
-              <p>Current filtered record count by review tier.</p>
+              <dt>Critical review</dt>
+              <dd id="metricCritical">&nbsp;</dd>
             </div>
-          </div>
-          <div class="chart" id="tierChart"></div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
             <div>
-              <h2>Top Counties</h2>
-              <p>Counties with the most high-review records.</p>
+              <dt>Moderate review</dt>
+              <dd id="ledgerModerate">&nbsp;</dd>
             </div>
-          </div>
-          <div class="chart" id="countyChart"></div>
-        </div>
-
-        <div class="panel detail-panel" id="system-detail" tabindex="-1" aria-labelledby="detail-heading">
-          <div class="panel-header">
             <div>
-              <h2 id="detail-heading">System Detail</h2>
-              <p id="detailSubtitle">Select a system from the table or map.</p>
+              <dt>Approximate geometry</dt>
+              <dd id="ledgerApprox">&nbsp;</dd>
             </div>
-            <a class="detail-back" href="#ranked-systems">Back to list</a>
-          </div>
-          <div id="systemDetail" class="system-detail"></div>
-        </div>
-      </section>
+            <div>
+              <dt>Validation checks passed</dt>
+              <dd id="metricValidation">&nbsp;</dd>
+            </div>
+          </dl>
+        </section>
 
-      <section class="table-section" id="ranked-systems" tabindex="-1" aria-labelledby="ranked-heading">
-        <div class="panel-header">
+        <nav class="jump" aria-label="Sections of this volume">
+          <a href="#distribution">Distribution</a>
+          <a href="#screening-map">Map</a>
+          <a href="#ranked-systems">Ranked list</a>
+          <a href="#system-detail">Selected system</a>
+          <a href="#methodology">Method</a>
+        </nav>
+
+        <section class="notice notice-error" id="errorBanner" role="alert" hidden></section>
+
+        <!-- Survey band. Map and indexes read together instead of in sequence. -->
+        <section class="section survey" id="screening-map" aria-labelledby="map-heading">
+          <div class="survey-grid">
+
+            <div class="panel">
+              <div class="section-head">
+                <h2 id="map-heading">Statewide screening map</h2>
+                <p class="head-note">Marker fill follows the review ramp.</p>
+              </div>
+              <div class="map-tools">
+                <label class="toggle-label">
+                  <input id="showAllMarkers" type="checkbox">
+                  Review-priority systems only
+                </label>
+                <div class="legend" id="tierLegend"></div>
+              </div>
+              <div id="overlayLegend" class="overlay-legend" aria-label="Map overlay legend" hidden></div>
+              <div class="map-plate plate settles">
+                <div id="streetMap" aria-label="Ohio public water systems, street map"></div>
+              </div>
+              <p class="plate-caption" id="mapSubtitle">
+                Service-area boundaries and source-water protection areas are in the layer control at
+                the top right of the plate.
+              </p>
+              <details class="disclosure">
+                <summary>Geography coverage</summary>
+                <div class="disclosure-body">
+                  <div class="coverage settles" aria-label="Geography coverage">
+                    <div><span>System-sourced service areas</span><strong id="geoVerified">&nbsp;</strong></div>
+                    <div><span>Modelled service areas</span><strong id="geoModeled">&nbsp;</strong></div>
+                    <div><span>Approximate locations</span><strong id="geoApproximate">&nbsp;</strong></div>
+                    <div><span>Unmatched geography</span><strong id="geoUnmatched">&nbsp;</strong></div>
+                    <div><span>Source-protection coverage</span><strong id="geoSourceProtection">&nbsp;</strong></div>
+                  </div>
+                  <p class="notice" id="useNotice" hidden></p>
+                </div>
+              </details>
+            </div>
+
+            <div class="panel panel-rule" id="distribution" aria-labelledby="distribution-heading">
+              <div class="section-head">
+                <h2 id="distribution-heading">Review tier distribution</h2>
+                <p class="head-note">Counts follow the filters.</p>
+              </div>
+              <div class="index-chart settles" id="tierChart"></div>
+
+              <div class="section-head section-head-stacked">
+                <h2>Counties by high-review count</h2>
+              </div>
+              <div class="index-chart settles" id="countyChart"></div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Instrument band. The record sits beside the list, not below it. -->
+        <section class="section instrument">
+          <div class="instrument-grid">
+
+            <div class="panel panel-table" id="ranked-systems" tabindex="-1" aria-labelledby="ranked-heading">
+              <div class="section-head">
+                <h2 id="ranked-heading">Ranked review list</h2>
+                <p class="head-note" id="tableCount" role="status"></p>
+              </div>
+
+              <div class="filters">
+                <label>
+                  <span>Search</span>
+                  <input id="searchInput" type="search" name="q" autocomplete="off"
+                     spellcheck="false" enterkeyhint="search"
+                     placeholder="PWSID, system name or county">
+                </label>
+                <label>
+                  <span>County</span>
+                  <select id="countyFilter"></select>
+                </label>
+                <label>
+                  <span>Review tier</span>
+                  <select id="tierFilter"></select>
+                </label>
+                <div class="filters-more">
+                  <button class="text-button" id="resetFilters" type="button">Reset all</button>
+                </div>
+              </div>
+
+              <details class="disclosure">
+                <summary>Further filters</summary>
+                <div class="disclosure-body">
+                  <div class="filters" style="border-bottom:0">
+                    <label>
+                      <span>System size</span>
+                      <select id="sizeFilter"></select>
+                    </label>
+                    <label>
+                      <span>Geometry confidence</span>
+                      <select id="geographyFilter"></select>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <div class="table-wrap settles">
+                <table>
+                  <caption class="sr-only">
+                    Ohio public water systems matching the current filters, ranked by review priority.
+                    Choose a system name to open its record.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Rank</th>
+                      <th scope="col">PWSID</th>
+                      <th scope="col">System</th>
+                      <th scope="col">County</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Review tier</th>
+                      <th scope="col">Leading driver</th>
+                      <th scope="col">Geometry</th>
+                    </tr>
+                  </thead>
+                  <tbody id="systemsTable"></tbody>
+                </table>
+              </div>
+
+              <div class="table-foot">
+                <p class="page-info" id="pageInfo"></p>
+                <div class="pager">
+                  <button class="text-button" id="prevPage" type="button">Previous</button>
+                  <button class="text-button" id="nextPage" type="button">Next</button>
+                </div>
+              </div>
+            </div>
+
+            <aside class="panel panel-rule panel-record" id="system-detail" tabindex="-1"
+                   aria-labelledby="detail-heading">
+              <div class="section-head">
+                <h2 id="detail-heading">Selected system</h2>
+                <p class="head-note" id="detailSubtitle"></p>
+              </div>
+              <div id="systemDetail" class="record settles"></div>
+            </aside>
+
+          </div>
+        </section>
+
+        <section class="notes" id="methodology" aria-labelledby="method-heading">
           <div>
-            <h2 id="ranked-heading">Ranked Review List</h2>
-            <p id="tableCount" role="status">-- records shown</p>
+            <h2 id="method-heading">Method</h2>
+            <p>
+              Each component is normalised to 0 through 100 and combined at the weights below into a
+              single review-priority score. The weights live in version-controlled configuration, so
+              any score on this page can be reproduced from the published inputs.
+            </p>
+            <ul class="weights">
+              <li><span>Compliance</span> <b>30%</b></li>
+              <li><span>Vulnerability</span> <b>20%</b></li>
+              <li><span>Enforcement</span> <b>15%</b></li>
+              <li><span>Funding gap</span> <b>15%</b></li>
+              <li><span>Small-system context</span> <b>10%</b></li>
+              <li><span>Drought</span> <b>10%</b></li>
+              <li><span>Data-quality penalty</span> <b>-5%</b></li>
+            </ul>
           </div>
-          <div class="pager">
-            <button class="ghost-button" id="prevPage" type="button">Prev</button>
-            <span id="pageInfo" class="muted">Page 1 of 1</span>
-            <button class="ghost-button" id="nextPage" type="button">Next</button>
+          <div>
+            <h2>What this does not establish</h2>
+            <p>
+              This is a screening index, not a regulatory finding, a legal determination, an
+              engineering siting tool, or a claim that any listed system is unsafe. A high rank means
+              a system is worth looking at earlier than others, and nothing more.
+            </p>
+            <p>
+              An unmatched funding record does not prove that a system received no funding. It proves
+              only that no record was matched to it. No Ohio SRF export was staged for this run, so
+              the funding component is partial by design and is reported as such on every record.
+            </p>
+            <p>
+              <b id="noteApprox"></b> of the <b id="noteTotal"></b> systems resolve only to an
+              approximate location. Those markers carry county-centroid or geocoded fallbacks and
+              should be read as screening context, never as service-area extent. Each record states
+              its own geometry provenance.
+            </p>
+            <div class="matrix" aria-hidden="true"></div>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <caption class="sr-only">Public water systems matching the filters, ranked by review priority. Choose a system name to open its detail panel.</caption>
-            <thead>
-              <tr>
-                <th scope="col">Rank</th>
-                <th scope="col">PWSID</th>
-                <th scope="col">System</th>
-                <th scope="col">County</th>
-                <th scope="col">Score</th>
-                <th scope="col">Tier</th>
-                <th scope="col">Top driver</th>
-                <th scope="col">Spatial</th>
-              </tr>
-            </thead>
-            <tbody id="systemsTable"></tbody>
-          </table>
-        </div>
-      </section>
+        </section>
 
-      <section class="methodology-grid" id="methodology">
-        <div>
-          <h2>Methodology</h2>
-          <p>The index combines compliance, enforcement, vulnerability, drought, possible funding gap, small-system context, and data quality into a 0-100 review-priority score.</p>
-          <ul>
-            <li>Compliance: 30%</li>
-            <li>Enforcement: 15%</li>
-            <li>Vulnerability: 20%</li>
-            <li>Drought: 10%</li>
-            <li>Funding gap: 15%</li>
-            <li>Small-system context: 10%</li>
-            <li>Data quality penalty: -5%</li>
-          </ul>
-        </div>
-        <div>
-          <h2>Limitations</h2>
-          <p>Unmatched funding records do not prove that a system received no funding. Low-confidence geography uses county centroid fallback and should be treated as screening context only.</p>
-          <p id="sourceNote"></p>
-        </div>
-      </section>
+        <p class="colophon">
+          Public-data screening model built by Scott Campbell. Sources: EPA ECHO SDWA, EPA public
+          water system service areas, CDC/ATSDR Social Vulnerability Index, Census TIGER/Line, and
+          the U.S. Drought Monitor.
+        </p>
+      </div>
     </main>
 
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=ui-2"></script>
+    <script src="app.js?v=abstract-1"></script>
   </body>
 </html>
