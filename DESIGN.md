@@ -40,13 +40,13 @@ accent; the review ramp is the entire colour system.
 
 | Token | Light | Dark |
 |---|---|---|
-| `--paper` | `#fbfbf9` | `#0e1113` |
-| `--field` | `#eeeeea` | `#1a1f21` |
-| `--ink` | `#0c0c0b` | `#eceae3` |
-| `--ink-2` | `#43433f` | `#a9aeab` |
-| `--ink-3` | `#6d6d68` | `#7d837f` |
-| `--rule` | `#dcdcd6` | `#282e30` |
-| `--rule-strong` | `#a3a39c` | `#49514f` |
+| `--paper` | `#f7f8fa` | `#0e1113` |
+| `--field` | `#e9edf2` | `#1a1f21` |
+| `--ink` | `#0c0d10` | `#e7ebf1` |
+| `--ink-2` | `#3f434a` | `#a4abb5` |
+| `--ink-3` | `#676c75` | `#79808a` |
+| `--rule` | `#d7dce3` | `#262c34` |
+| `--rule-strong` | `#9ba3ae` | `#464e59` |
 
 The hero choropleth uses a six-step **cool blue** ramp (`--c1` through `--c6`) on
 quantile breaks, running pale to deep indigo in light and deep to pale in dark. Equal intervals were tried first and left the top two bands nearly empty,
@@ -77,6 +77,24 @@ The ground carries a slight temperature drift (two fixed radial gradients toward
 **Banned palette family.** Warm-cream backgrounds, clay and oxblood accents, and warm
 near-black text are the documented AI-default family. Do not reintroduce
 `#edede8`-through-`#f7f5f1` grounds, `#b6553a`-family accents, or `#1b1814`-family ink.
+
+**Every colour in this system sits on the cool side of neutral.** The whole palette was
+audited channel by channel: no hex has red leading blue by 6 or more. That is the check to
+re-run, not a judgement about whether something "looks" warm. It caught three values a
+visual pass missed: the modelled-boundary gold `#9a6a12` (the banned brass family), the
+error-banner field `#e8ded6` (the banned cream family), and the dark-theme ink `#eceae3`.
+
+**The basemap counts too.** OpenStreetMap raster tiles ship warm land fill, green forest
+and pink motorways, which was the largest warm surface on the page and fought everything
+else. `--map-tile-filter` neutralises them in both themes: `grayscale(1) contrast(0.82)
+brightness(1.08)` in light. The tiles are ground; the tier markers carry the signal.
+
+## Charts
+
+One bar treatment everywhere: a 6px bar on a hairline baseline, never a filled track.
+Bars carry the colour of what they measure. Review-tier bars take their tier's ramp colour;
+the county chart measures high-review counts, so its bars take `--tier-high`; component
+bars inside a record are neutral `--ink-3`, because there the figure is the point.
 
 ## The tier mark
 

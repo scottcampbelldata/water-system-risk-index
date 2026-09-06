@@ -555,7 +555,7 @@ function renderCharts() {
     countyRows.length ? countyRows : [{ county: "No high-review records in filter", highReviewSystems: 0 }],
     "highReviewSystems",
     "county",
-    () => "var(--ink)"
+    () => "var(--tier-high)"
   );
 }
 
