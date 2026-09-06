@@ -167,6 +167,13 @@
   border-radius: 0;
 }
 
+/* An author-origin display value beats the UA sheet's [hidden]{display:none},
+   so every element toggled by the hidden attribute needs this reset. Without it
+   #overlayLegend laid out on every load as an empty ruled row. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   scrollbar-color: var(--rule-strong) var(--paper);
