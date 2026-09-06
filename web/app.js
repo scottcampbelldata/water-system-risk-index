@@ -110,7 +110,8 @@ function tierMark(tier) {
     notches += i <= step ? '<i class="on"></i>' : "<i></i>";
   }
   return `<span class="tier-mark" data-tier="${tierSlug(tier)}">` +
-    `<span class="tier-ramp" aria-hidden="true">${notches}</span>${esc(tier)}</span>`;
+    `<span class="tier-ramp" aria-hidden="true">${notches}</span>` +
+    `<span class="tier-name">${esc(tier)}</span></span>`;
 }
 
 const componentLabels = {

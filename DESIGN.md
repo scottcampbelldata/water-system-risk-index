@@ -168,9 +168,15 @@ The page is a hero followed by two asymmetric bands, not a single stacked column
 Columns are separated by a hairline column rule and whitespace. Panels are never boxes.
 Both bands collapse to one column below 1080px, where the record stops being sticky.
 
-The table sheds its two least-critical columns (leading driver, geometry) via a container
-query when its panel is under 860px, because eight columns in a 720px panel wrap every cell
-to three lines. The record repeats both fields anyway.
+The table sheds columns twice. A container query drops leading driver and geometry when the
+panel is under 860px, because eight columns in a 720px panel wrap every cell to three lines;
+the record repeats both fields anyway. Below 640px it also drops PWSID and county, folds the
+tier label to its notches, and switches to `table-layout: fixed`.
+
+**The fixed layout is the part that matters.** Under auto layout the name column sizes to
+its content, so a long system name pushes the table wider than the phone however tight the
+other columns get. Fixed layout is what lets the name truncate instead. The tier label is
+clipped rather than `display: none`, so it still reaches a screen reader.
 
 No count from a single model run is hardcoded in markup, including inside the hero plate's
 accessible name. Every figure is filled from the API at render time.
