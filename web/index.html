@@ -12,7 +12,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" href="fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=abstract-6">
+    <link rel="stylesheet" href="styles.css?v=abstract-7">
     <script src="theme.js?v=ui-1"></script>
   </head>
   <body>
@@ -55,7 +55,7 @@
               <figcaption class="hero-caption">
                 <span class="hero-caption-label">Average review-priority score by county</span>
                 <span class="hero-scale" id="heroScale" aria-hidden="true"></span>
-                <span class="hero-readout" id="heroReadout"></span>
+                <span class="hero-readout" id="heroReadout" role="status" aria-live="polite"></span>
               </figcaption>
             </figure>
           </div>
@@ -298,6 +298,6 @@
 
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=abstract-6"></script>
+    <script src="app.js?v=abstract-7"></script>
   </body>
 </html>

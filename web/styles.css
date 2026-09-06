@@ -581,7 +581,10 @@ thead th,
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+  /* The map column is sized to the artwork (620:742 at a 500px cap is 418px
+     wide) so the plate hugs it instead of framing empty gutters. The text takes
+     what that releases. */
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 452px);
   gap: clamp(28px, 4.2vw, 60px);
   align-items: center;
 }
@@ -597,8 +600,10 @@ thead th,
 
 #heroMap svg {
   display: block;
-  width: 100%;
   height: min(56vh, 500px);
+  width: auto;
+  max-width: 100%;
+  margin-inline: auto;
 }
 
 .county {
@@ -655,18 +660,28 @@ thead th,
 }
 
 .hero-readout {
-  margin-left: auto;
+  grid-column: 1 / -1;
   font-size: var(--t-caption);
   font-weight: var(--w-semi);
   color: var(--ink-2);
-  min-height: 1.2em;
-  text-align: right;
+  min-height: 1.3em;
+}
+
+.hero-readout:empty::before {
+  content: "Point at a county for its figures";
+  font-weight: var(--w-medium);
+  color: var(--ink-3);
+}
+
+@media (hover: none) {
+  .hero-readout:empty::before {
+    content: "County figures are listed below";
+  }
 }
 
 /* The opening has a hard capacity: the finding, and nothing competing. */
 .finding-statement {
   margin: 0;
-  max-width: 22ch;
   font-size: var(--t-display);
   font-stretch: var(--wd-wide);
   font-weight: var(--w-display);
@@ -1812,6 +1827,12 @@ th:nth-child(5) {
     align-items: start;
   }
 
+  #heroMap svg {
+    height: auto;
+    width: 100%;
+    max-height: 62vh;
+  }
+
   .survey-grid .map-plate {
     flex: 0 0 auto;
   }
@@ -1895,8 +1916,6 @@ th:nth-child(5) {
   }
 
   .hero-readout {
-    margin-left: 0;
-    text-align: left;
     width: 100%;
   }
 

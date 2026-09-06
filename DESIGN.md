@@ -116,6 +116,18 @@ without owning the accessibility burden.
 
 Colour is never the sole carrier of tier meaning anywhere in the interface.
 
+## Interactive plate
+
+The hero map answers to a pointer: moving over a county writes its systems, high-review
+count and mean score into `#heroReadout`, which is `role="status" aria-live="polite"`. At
+rest the readout carries a hint rather than sitting blank, because a blank line says
+nothing about whether the map is interactive; under `hover: none` the hint points at the
+county list instead. The readout gets its own row in the caption grid so it can never wrap
+into the plate's corner mark.
+
+Keyboard users are served by the ranked county chart below rather than by 88 focusable SVG
+paths. That is a deliberate trade, recorded here so it is not mistaken for an oversight.
+
 ## Motion
 
 Three moments, each with a job. Nothing else animates.
@@ -142,6 +154,10 @@ The page is a hero followed by two asymmetric bands, not a single stacked column
    marks on counties holding high-review systems. It depends on no API call and paints
    before the first request. Hard capacity: nothing else competes inside this block, and
    the ledger beneath it must never echo the headline numbers.
+   The plate is sized to its artwork, not the other way round. The map's viewBox is
+   620x742, so at a 500px height cap it is 418px wide; the hero's map column is 452px so
+   the plate hugs it. Giving the plate a wider fixed box letterboxes the state and strands
+   the corner register marks in empty gutters.
 2. **Survey band.** Street map in the wide column, tier distribution and county ranking in
    the narrow one. `1.5fr / 1fr`, stretched so both columns finish together.
 3. **Instrument band.** Filters and the ranked table in the wide column, the selected-system
