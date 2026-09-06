@@ -793,18 +793,6 @@ tbody td:nth-child(3) {
   container-type: inline-size;
 }
 
-/* The fact grid answers to the panel's own width, not the viewport's. */
-@container (max-width: 380px) {
-  .fact-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .evidence-row {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-}
-
 /* ---------------------------------------------------------------- filters */
 
 .filters {
@@ -1482,6 +1470,20 @@ td.rank {
   max-width: 68ch;
   font-size: 12.5px;
   color: var(--ink-3);
+}
+
+/* The fact grid answers to the panel's own width, not the viewport's. This has
+   to sit after .fact-grid and .evidence-row: the specificity is equal, so a
+   container query placed above them is simply overridden by source order. */
+@container (max-width: 380px) {
+  .fact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .evidence-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 
 /* ------------------------------------------------------------------ notes */
