@@ -7,10 +7,11 @@
     <meta name="theme-color" content="#101719" media="(prefers-color-scheme: dark)">
     <title>Water System Risk & Funding Priority Index</title>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=ui-1">
+    <link rel="stylesheet" href="styles.css?v=ui-2">
     <script src="theme.js?v=ui-1"></script>
   </head>
   <body>
+    <a class="skip-link" href="#searchInput">Skip to system search</a>
     <header class="app-header">
       <div class="brand">
         <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true" focusable="false">
@@ -19,19 +20,8 @@
           <path d="M11 27c2.2 0 2.2 2 4.5 2s2.3-2 4.5-2 2.2 2 4.5 2 2.3-2 4.5-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
         </svg>
         <div>
-          <p class="eyebrow">Ohio prototype &middot; review-priority screen</p>
           <h1>Water System Risk &amp; Funding Priority Index</h1>
-          <div class="risk-gauge" aria-hidden="true">
-            <span class="risk-gauge-label">Calm</span>
-            <span class="risk-gauge-bar">
-              <i style="background:var(--tier-lower)"></i>
-              <i style="background:var(--tier-monitor)"></i>
-              <i style="background:var(--tier-moderate)"></i>
-              <i style="background:var(--tier-high)"></i>
-              <i style="background:var(--tier-critical)"></i>
-            </span>
-            <span class="risk-gauge-label">Critical</span>
-          </div>
+          <p class="app-purpose">Ohio screening prototype. Review priority, not a drinking-water safety assessment.</p>
         </div>
       </div>
       <div class="header-actions">
@@ -70,6 +60,8 @@
         </div>
       </section>
 
+      <details class="coverage-details">
+      <summary>Geography coverage and screening context</summary>
       <section class="geography-grid" aria-label="Geography coverage">
         <div class="metric">
           <span>System-sourced service areas</span>
@@ -94,10 +86,11 @@
       </section>
 
       <section class="notice" id="useNotice" hidden></section>
+      </details>
       <section class="notice notice-error" id="errorBanner" role="alert" hidden></section>
 
       <section class="filters" aria-label="Dashboard filters">
-        <label>
+        <label class="search-filter">
           Search
           <input id="searchInput" type="search" placeholder="PWSID, system name, county">
         </label>
@@ -109,6 +102,9 @@
           Risk tier
           <select id="tierFilter"></select>
         </label>
+        <details class="advanced-filters">
+        <summary>More filters</summary>
+        <div class="advanced-filter-fields">
         <label>
           System size
           <select id="sizeFilter"></select>
@@ -117,10 +113,18 @@
           Geography
           <select id="geographyFilter"></select>
         </label>
+        </div>
+        </details>
       </section>
+      <nav class="view-links" aria-label="Dashboard views">
+        <a href="#screening-map">Map</a>
+        <a href="#ranked-systems">Browse ranked systems</a>
+        <a href="#system-detail">Selected system</a>
+        <a href="#methodology">Methodology</a>
+      </nav>
 
       <section class="dashboard-grid">
-        <div class="panel map-panel">
+        <div class="panel map-panel" id="screening-map">
           <div class="panel-header">
             <div>
               <h2>Statewide Screening Map</h2>
@@ -158,22 +162,23 @@
           <div class="chart" id="countyChart"></div>
         </div>
 
-        <div class="panel detail-panel">
+        <div class="panel detail-panel" id="system-detail" tabindex="-1" aria-labelledby="detail-heading">
           <div class="panel-header">
             <div>
-              <h2>System Detail</h2>
+              <h2 id="detail-heading">System Detail</h2>
               <p id="detailSubtitle">Select a system from the table or map.</p>
             </div>
+            <a class="detail-back" href="#ranked-systems">Back to list</a>
           </div>
           <div id="systemDetail" class="system-detail"></div>
         </div>
       </section>
 
-      <section class="table-section">
+      <section class="table-section" id="ranked-systems" tabindex="-1" aria-labelledby="ranked-heading">
         <div class="panel-header">
           <div>
-            <h2>Ranked Review List</h2>
-            <p id="tableCount">-- records shown</p>
+            <h2 id="ranked-heading">Ranked Review List</h2>
+            <p id="tableCount" role="status">-- records shown</p>
           </div>
           <div class="pager">
             <button class="ghost-button" id="prevPage" type="button">Prev</button>
@@ -183,7 +188,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <caption class="sr-only">Ranked list of public water systems matching the current filters. Each row is selectable to open its detail panel.</caption>
+            <caption class="sr-only">Public water systems matching the filters, ranked by review priority. Choose a system name to open its detail panel.</caption>
             <thead>
               <tr>
                 <th scope="col">Rank</th>
@@ -201,7 +206,7 @@
         </div>
       </section>
 
-      <section class="methodology-grid">
+      <section class="methodology-grid" id="methodology">
         <div>
           <h2>Methodology</h2>
           <p>The index combines compliance, enforcement, vulnerability, drought, possible funding gap, small-system context, and data quality into a 0-100 review-priority score.</p>
@@ -225,6 +230,6 @@
 
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=ui-1"></script>
+    <script src="app.js?v=ui-2"></script>
   </body>
 </html>

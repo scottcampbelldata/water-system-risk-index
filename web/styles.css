@@ -322,8 +322,17 @@ h2 {
 }
 
 .summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  gap: 0;
 }
+
+.summary-grid .metric { border: 0; border-radius: 0; background: transparent; }
+.summary-grid .metric + .metric { border-left: 1px solid var(--line); }
+.summary-grid .metric::before { content: none; }
 
 .metric {
   position: relative;
@@ -348,10 +357,10 @@ h2 {
 .metric span {
   display: block;
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .metric strong {
@@ -375,7 +384,6 @@ h2 {
   margin: 14px 0;
   padding: 12px 14px;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--notice-edge);
   border-radius: var(--radius-sm);
   background: var(--notice-bg);
   color: var(--notice-ink);
@@ -400,7 +408,7 @@ h2 {
 /* ---------------------------------------------------------------- filters */
 .filters {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(150px, 1fr));
+  grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(150px, 1fr)) auto;
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -409,16 +417,18 @@ label {
   display: grid;
   gap: 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 input,
 select {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
+  font-size: 16px;
+  font-weight: 400;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -433,7 +443,7 @@ select:hover {
 }
 
 input::placeholder {
-  color: color-mix(in srgb, var(--muted) 80%, transparent);
+  color: var(--muted);
 }
 
 /* ---------------------------------------------------------------- layout */
@@ -450,7 +460,7 @@ input::placeholder {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: none;
 }
 
 .panel {
@@ -886,6 +896,12 @@ tbody tr.selected td:first-child {
     grid-template-columns: 1fr;
   }
 
+  .summary-grid { grid-template-columns: 1fr 1fr; }
+  .summary-grid .metric:nth-child(3) { border-left: 0; }
+  .summary-grid .metric:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .filters { grid-template-columns: 1fr 1fr; }
+  .search-filter, .advanced-filters { grid-column: 1 / -1; }
+
   .map-panel {
     grid-column: auto;
   }
@@ -897,7 +913,23 @@ tbody tr.selected td:first-child {
   h1 {
     font-size: 21px;
   }
+  .table-section .panel-header { flex-direction: column; }
 }
+
+.app-purpose { margin: 8px 0 0; font-size: 14px; color: var(--muted); line-height: 1.5; }
+.coverage-details { margin: 0 0 18px; }
+summary { cursor: pointer; min-height: 44px; padding: 11px 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.advanced-filters { align-self: end; position: relative; }
+.advanced-filters summary { padding-inline: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.advanced-filter-fields { display: grid; gap: 12px; padding-top: 12px; }
+.view-links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 18px; font-size: 14px; }
+.view-links a, .detail-back { color: var(--accent-strong); text-underline-offset: 4px; min-height: 32px; display: inline-flex; align-items: center; }
+.detail-back { white-space: nowrap; font-size: 13px; }
+.system-link { color: var(--accent-strong); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
+.system-link:hover { text-decoration-thickness: 2px; }
+#ranked-systems, #system-detail, #screening-map, #methodology, #searchInput { scroll-margin-top: calc(var(--sticky-header-height, 180px) + 16px); }
+.skip-link { position: absolute; left: 16px; top: -100px; z-index: 2000; background: var(--surface); color: var(--ink); padding: 12px 16px; }
+.skip-link:focus { top: 12px; }
 
 @media (prefers-reduced-motion: reduce) {
   * {
