@@ -877,13 +877,21 @@ function geographyEvidenceRow(label, value) {
   return `<div class="evidence-row"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
 }
 
+const compactRecord = window.matchMedia("(max-width: 640px)");
+
+function recordSection(title, body) {
+  const open = compactRecord.matches ? "" : " open";
+  return `<details class="disclosure record-section"${open}>` +
+    `<summary>${esc(title)}</summary>` +
+    `<div class="disclosure-body">${body}</div></details>`;
+}
+
 function renderGeographyEvidence(system) {
   const tierLabel = geometryTierLabels[system.geometrySourceTier] || "--";
   const matched = ["verified_service_area_boundary", "modeled_service_area_boundary"].includes(system.geometrySourceTier);
   const primary = matched ? "EPA service-area polygon" : (system.geometrySourceTier === "county_centroid" ? "County centroid (approximate)" : "No geography matched");
-  return `
+  return recordSection("Geography evidence", `
     <div class="evidence">
-      <h4>Geography evidence</h4>
       ${geographyEvidenceRow("Primary geometry", primary)}
       ${geographyEvidenceRow("Source", tierLabel)}
       ${geographyEvidenceRow("Boundary type", system.boundaryType ? system.boundaryType.replace(/_/g, "-") : "n/a")}
@@ -894,7 +902,7 @@ function renderGeographyEvidence(system) {
       ${geographyEvidenceRow("Source protection", system.sourceProtectionStatus === "available" ? `Available - ${prettyKinds(system.sourceProtectionKinds)}` : "None found")}
       <p class="muted evidence-note">${esc(system.spatialLimitationNote || "")}</p>
     </div>
-  `;
+  `);
 }
 
 function renderDetail() {
@@ -923,7 +931,7 @@ function renderDetail() {
       <div class="fact"><span>SVI percentile</span><strong>${system.svi === null ? "--" : Math.round(system.svi * 100)}</strong></div>
       <div class="fact"><span>Drought</span><strong>${formatComponent(system.components?.drought_component)}</strong></div>
     </div>
-    <div class="component-grid">${renderComponentBars(system)}</div>
+    ${recordSection("Score components", `<div class="component-grid">${renderComponentBars(system)}</div>`)}
     ${renderGeographyEvidence(system)}
     <p class="explanation">${esc(system.explanation)}</p>
     <p class="funding-note">Funding match: ${esc(system.fundingMatchConfidence)}. ${esc(system.fundingNotes)}</p>
@@ -1071,6 +1079,17 @@ async function loadApp() {
 // attribute is set by theme.js; this wires the segmented control and keeps the
 // pressed state in sync. "system" clears the attribute so prefers-color-scheme
 // governs. Set up before loadApp so the toggle works even if the API is down.
+// Crossing the breakpoint has to move sections that are already on screen,
+// otherwise a phone rotated to landscape keeps them folded and a desktop window
+// narrowed keeps them open.
+const syncRecordSections = () => {
+  document.querySelectorAll(".record-section").forEach(el => {
+    el.open = !compactRecord.matches;
+  });
+};
+if (compactRecord.addEventListener) compactRecord.addEventListener("change", syncRecordSections);
+else if (compactRecord.addListener) compactRecord.addListener(syncRecordSections);
+
 // Everything whose colour JavaScript wrote rather than CSS: legend swatches,
 // index bars, map markers and the vector overlays.
 function repaintThemedGraphics() {

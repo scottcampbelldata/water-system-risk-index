@@ -173,6 +173,13 @@ panel is under 860px, because eight columns in a 720px panel wrap every cell to 
 the record repeats both fields anyway. Below 640px it also drops PWSID and county, folds the
 tier label to its notches, and switches to `table-layout: fixed`.
 
+The record folds too. Below 640px its score components and geography evidence collapse into
+disclosures, closed by default, leaving the title, the headline facts and the plain-language
+explanation open as the summary. That is 1,804px of record down to 853px. The open state is
+set in JavaScript from a `matchMedia` query rather than in CSS, because a `details` element
+cannot be forced open by a stylesheet reliably, and a listener re-syncs already-rendered
+sections when the breakpoint is crossed.
+
 **The fixed layout is the part that matters.** Under auto layout the name column sizes to
 its content, so a long system name pushes the table wider than the phone however tight the
 other columns get. Fixed layout is what lets the name truncate instead. The tier label is

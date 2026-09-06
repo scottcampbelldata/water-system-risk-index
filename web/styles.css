@@ -1538,8 +1538,25 @@ th:nth-child(5) {
 /* The trace: a component's contribution is drawn against its own weight, so
    a score can be read back to what produced it. */
 .component-grid {
-  margin-top: var(--s-6);
+  border-top: 0;
+}
+
+.record-section {
+  border-bottom: 0;
   border-top: var(--hair) solid var(--ink);
+}
+
+.record-section > summary {
+  color: var(--ink-2);
+}
+
+.record-section[open] > summary {
+  color: var(--ink-3);
+}
+
+.record-section .disclosure-body {
+  padding-top: 0;
+  padding-bottom: var(--s-4);
 }
 
 .component-row .bar-fill {
@@ -1555,18 +1572,7 @@ th:nth-child(5) {
 }
 
 .evidence {
-  margin-top: var(--s-6);
-  border-top: var(--hair) solid var(--ink);
-}
-
-.evidence h4 {
-  margin: var(--s-3) 0 var(--s-2);
-  font-size: var(--t-micro);
-  font-stretch: var(--wd-condensed);
-  font-weight: var(--w-semi);
-  letter-spacing: var(--ls-label);
-  text-transform: uppercase;
-  color: var(--ink-3);
+  border-top: 0;
 }
 
 .evidence-row {
