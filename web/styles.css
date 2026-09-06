@@ -40,20 +40,20 @@
 /* ------------------------------------------------------------------ tokens */
 
 :root {
-  /* Stock. Near-white, drifting only slightly in temperature so it reads as a
-     printed sheet without tipping into the warm-cream family. */
-  --paper: #fbfbf9;
-  --paper-warm: #ffffff;
-  --paper-cool: #f6f7f5;
-  --field: #eeeeea;
+  /* Stock. Cool near-white. Deliberately on the blue side of neutral so it sits
+     with the map ramp and cannot be read as cream. */
+  --paper: #f7f8fa;
+  --paper-tint-a: #ffffff;
+  --paper-tint-b: #eef2f7;
+  --field: #e9edf2;
 
   /* Ink is never pure black. */
-  --ink: #0c0c0b;
-  --ink-2: #43433f;
-  --ink-3: #6d6d68;
+  --ink: #0c0d10;
+  --ink-2: #3f434a;
+  --ink-3: #676c75;
 
-  --rule: #dcdcd6;
-  --rule-strong: #a3a39c;
+  --rule: #d7dce3;
+  --rule-strong: #9ba3ae;
 
   /* The review ramp drives the map, the legend and the index bars. Ordinality
      is NOT carried here: the tier mark's notch count carries it, in ink, so the
@@ -65,13 +65,13 @@
   --tier-high: #d6006b;
   --tier-critical: #7a0039;
 
-  --flag-ink: #6d2f1f;
-  --flag-field: #e8ded6;
+  --flag-ink: #a4123a;
+  --flag-field: #fbe8ee;
 
   /* Map overlay palette. These paint polygons and their legend swatches, so
      they belong to the colour system rather than to app.js. */
   --ov-verified: #14746f;
-  --ov-modeled: #9a6a12;
+  --ov-modeled: #6b3fa0;
   --ov-groundwater: #1d4ed8;
   --ov-inner-zone: #6b21a8;
   --ov-surface: #15803d;
@@ -88,7 +88,6 @@
   --c4: #7490c0;
   --c5: #4c65a3;
   --c6: #2c3c78;
-  --c-land: #e4e9f0;
 
   /* The one saturated colour on the page. Reserved for high-review marks and
      the alarm end of the review ramp; never used decoratively. */
@@ -141,7 +140,7 @@
   --s-9: 60px;
   --s-10: 80px;
 
-  --map-tile-filter: none;
+  --map-tile-filter: grayscale(1) contrast(0.82) brightness(1.08);
   --hair: 1px;
 
   color-scheme: light;
@@ -150,16 +149,16 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper: #0e1113;
-    --paper-warm: #131719;
-    --paper-cool: #0c1012;
+    --paper-tint-a: #141a1f;
+    --paper-tint-b: #0c1116;
     --field: #1a1f21;
 
-    --ink: #eceae3;
-    --ink-2: #a9aeab;
-    --ink-3: #7d837f;
+    --ink: #e7ebf1;
+    --ink-2: #a4abb5;
+    --ink-3: #79808a;
 
-    --rule: #282e30;
-    --rule-strong: #49514f;
+    --rule: #262c34;
+    --rule-strong: #464e59;
 
     /* On dark stock the ramp climbs into light rather than into ink. */
     --tier-lower: #29354a;
@@ -168,8 +167,8 @@
     --tier-high: #ff3d93;
     --tier-critical: #ff9ecb;
 
-    --flag-ink: #ffa88f;
-    --flag-field: #2a1714;
+    --flag-ink: #ff9ab5;
+    --flag-field: #2b1220;
 
     --c1: #161b23;
     --c2: #1f2c44;
@@ -177,12 +176,11 @@
     --c4: #40608f;
     --c5: #5f83b8;
     --c6: #91b3dd;
-    --c-land: #171c24;
 
     --signal: #ff3d93;
 
     --ov-verified: #4fd1c5;
-    --ov-modeled: #e3b341;
+    --ov-modeled: #b98cff;
     --ov-groundwater: #7aa7ff;
     --ov-inner-zone: #c79bff;
     --ov-surface: #6ee7a0;
@@ -199,16 +197,16 @@
 
 :root[data-theme="dark"] {
   --paper: #0e1113;
-  --paper-warm: #131719;
-  --paper-cool: #0c1012;
+  --paper-tint-a: #141a1f;
+  --paper-tint-b: #0c1116;
   --field: #1a1f21;
 
-  --ink: #eceae3;
-  --ink-2: #a9aeab;
-  --ink-3: #7d837f;
+  --ink: #e7ebf1;
+  --ink-2: #a4abb5;
+  --ink-3: #79808a;
 
-  --rule: #282e30;
-  --rule-strong: #49514f;
+  --rule: #262c34;
+  --rule-strong: #464e59;
 
   --tier-lower: #29354a;
   --tier-monitor: #3f5878;
@@ -216,8 +214,8 @@
   --tier-high: #ff3d93;
   --tier-critical: #ff9ecb;
 
-  --flag-ink: #ffa88f;
-  --flag-field: #2a1714;
+  --flag-ink: #ff9ab5;
+  --flag-field: #2b1220;
 
   --c1: #161b23;
   --c2: #1f2c44;
@@ -225,12 +223,11 @@
   --c4: #40608f;
   --c5: #5f83b8;
   --c6: #91b3dd;
-  --c-land: #171c24;
 
   --signal: #ff3d93;
 
   --ov-verified: #4fd1c5;
-  --ov-modeled: #e3b341;
+  --ov-modeled: #b98cff;
   --ov-groundwater: #7aa7ff;
   --ov-inner-zone: #c79bff;
   --ov-surface: #6ee7a0;
@@ -283,8 +280,8 @@ body {
   background-color: var(--paper);
   /* The stock drift. Fixed so it belongs to the sheet, not to the scroll. */
   background-image:
-    radial-gradient(120% 80% at 0% 0%, var(--paper-warm) 0%, transparent 55%),
-    radial-gradient(120% 90% at 100% 100%, var(--paper-cool) 0%, transparent 60%);
+    radial-gradient(120% 80% at 0% 0%, var(--paper-tint-a) 0%, transparent 55%),
+    radial-gradient(120% 90% at 100% 100%, var(--paper-tint-b) 0%, transparent 60%);
   background-attachment: fixed;
   color: var(--ink);
   font-family: "Archivo", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
@@ -1105,7 +1102,7 @@ details.disclosure > summary:hover {
 
 .bar-track {
   position: relative;
-  height: 10px;
+  height: 6px;
   min-width: 0;
   /* The baseline is a hairline, not a filled tub. */
   background: linear-gradient(var(--rule) 0 0) left bottom/100% 1px no-repeat;
@@ -1115,7 +1112,7 @@ details.disclosure > summary:hover {
   position: absolute;
   left: 0;
   bottom: 0;
-  height: 10px;
+  height: 6px;
   background: var(--ink);
 }
 
@@ -1531,12 +1528,7 @@ th:nth-child(5) {
 }
 
 .component-row .bar-fill {
-  height: 6px;
   background: var(--ink-3);
-}
-
-.component-row .bar-track {
-  height: 6px;
 }
 
 .component-weight {
@@ -1895,19 +1887,19 @@ th:nth-child(5) {
 @media print {
   /* Re-declare the light tokens. Descendants all name --ink / --ink-2 / --ink-3
      directly, so a body colour never reaches them; without this, printing while
-     the dark theme is active puts #eceae3 text on white paper. */
+     the dark theme is active puts near-white text on white paper. */
   :root,
   :root[data-theme="dark"] {
     --paper: #ffffff;
-    --paper-warm: #ffffff;
-    --paper-cool: #ffffff;
+    --paper-tint-a: #ffffff;
+    --paper-tint-b: #ffffff;
     --field: #f2f2ef;
     --ink: #111111;
-    --ink-2: #3a3a37;
-    --ink-3: #5c5c58;
-    --rule: #c9c9c3;
-    --rule-strong: #8e8e88;
-    --map-tile-filter: none;
+    --ink-2: #3a3c40;
+    --ink-3: #5c5f65;
+    --rule: #ccd0d6;
+    --rule-strong: #939aa4;
+    --map-tile-filter: grayscale(1) contrast(0.82) brightness(1.08);
     color-scheme: light;
   }
 
