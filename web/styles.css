@@ -126,15 +126,6 @@
     --c6: #ff5330;
     --c-land: #1a1e20;
 
-  --ov-verified: #4fd1c5;
-  --ov-modeled: #e3b341;
-  --ov-groundwater: #7aa7ff;
-  --ov-inner-zone: #c79bff;
-  --ov-surface: #6ee7a0;
-  --ov-county: #6d736c;
-  --ov-fallback: #9aa097;
-  --ov-swatch-edge: rgba(236, 234, 227, 0.34);
-
     --ov-verified: #4fd1c5;
     --ov-modeled: #e3b341;
     --ov-groundwater: #7aa7ff;
@@ -180,6 +171,15 @@
   --c5: #b25c26;
   --c6: #ff5330;
   --c-land: #1a1e20;
+
+  --ov-verified: #4fd1c5;
+  --ov-modeled: #e3b341;
+  --ov-groundwater: #7aa7ff;
+  --ov-inner-zone: #c79bff;
+  --ov-surface: #6ee7a0;
+  --ov-county: #6d736c;
+  --ov-fallback: #9aa097;
+  --ov-swatch-edge: rgba(236, 234, 227, 0.34);
 
   --map-tile-filter: invert(0.93) hue-rotate(178deg) brightness(0.9)
     contrast(0.9) saturate(0.65);
