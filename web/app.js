@@ -203,6 +203,32 @@ function formatDate(iso) {
   }).format(date);
 }
 
+// API enums arrive as snake_case. The table already unslugged some of them and
+// the record did not, so "medium_high" was rendering raw beside "very small".
+// Compound modifiers take a hyphen; everything else takes a space. "medium_high"
+// is one adjective, "very_small" is two words.
+const enumLabels = {
+  medium_high: "Medium-high",
+  medium_low: "Medium-low",
+  very_small: "Very small",
+  very_large: "Very large"
+};
+
+function humanize(value) {
+  if (value === null || value === undefined || value === "") return "--";
+  const key = String(value).trim();
+  if (enumLabels[key]) return enumLabels[key];
+  const text = key.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// Components are 0-100 model outputs. Two decimals implied a precision the
+// model does not have, and rendered 100.00 as a wall of digits.
+function formatComponent(value) {
+  if (value === null || value === undefined) return "--";
+  return Number(value).toFixed(1).replace(/\.0$/, "");
+}
+
 function formatScore(value) {
   if (value === null || value === undefined) return "--";
   return Number(value).toFixed(2);
@@ -796,7 +822,7 @@ function renderTable() {
       <td class="num">${formatScore(system.score)}</td>
       <td>${tierMark(system.tier)}</td>
       <td>${esc((system.drivers?.[0]) ?? "")}</td>
-      <td>${esc(String(system.spatialConfidence || "").replace(/_/g, " "))}</td>
+      <td>${esc(humanize(system.spatialConfidence))}</td>
     </tr>
   `).join("");
 
@@ -810,7 +836,7 @@ function renderComponentBars(system) {
     <div class="component-row">
       <span>${esc(componentLabels[key] || key)}<br><span class="component-weight">${esc(componentWeights[key] || "")}</span></span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value || 0))}%"></div></div>
-      <strong class="bar-value">${formatScore(value)}</strong>
+      <strong class="bar-value">${formatComponent(value)}</strong>
     </div>
   `).join("");
 }
@@ -833,7 +859,7 @@ function renderGeographyEvidence(system) {
       ${geographyEvidenceRow("Provider", system.boundaryProvider || "n/a")}
       ${geographyEvidenceRow("PWSID match", system.matchMethod ? system.matchMethod.replace(/_/g, " ") : "n/a")}
       ${matched ? geographyEvidenceRow("Service area", `${formatNumber(system.areaSqKm)} km²`) : ""}
-      ${geographyEvidenceRow("Spatial confidence", String(system.spatialConfidence || "").replace(/_/g, " "))}
+      ${geographyEvidenceRow("Geometry confidence", humanize(system.spatialConfidence))}
       ${geographyEvidenceRow("Source protection", system.sourceProtectionStatus === "available" ? `Available - ${prettyKinds(system.sourceProtectionKinds)}` : "None found")}
       <p class="muted evidence-note">${esc(system.spatialLimitationNote || "")}</p>
     </div>
@@ -859,12 +885,12 @@ function renderDetail() {
     <div class="fact-grid">
       <div class="fact"><span>Score</span><strong>${formatScore(system.score)}</strong></div>
       <div class="fact"><span>Population</span><strong>${formatNumber(system.population)}</strong></div>
-      <div class="fact"><span>Size</span><strong>${esc(String(system.sizeClass || "").replace(/_/g, " "))}</strong></div>
-      <div class="fact"><span>Spatial confidence</span><strong>${esc(system.spatialConfidence)}</strong></div>
+      <div class="fact"><span>Size</span><strong>${esc(humanize(system.sizeClass))}</strong></div>
+      <div class="fact"><span>Geometry confidence</span><strong>${esc(humanize(system.spatialConfidence))}</strong></div>
       <div class="fact"><span>Violations 36m</span><strong>${formatNumber(system.violations36m)}</strong></div>
       <div class="fact"><span>Enforcement 36m</span><strong>${formatNumber(system.enforcement36m)}</strong></div>
       <div class="fact"><span>SVI percentile</span><strong>${system.svi === null ? "--" : Math.round(system.svi * 100)}</strong></div>
-      <div class="fact"><span>Drought component</span><strong>${formatScore(system.components?.drought_component)}</strong></div>
+      <div class="fact"><span>Drought</span><strong>${formatComponent(system.components?.drought_component)}</strong></div>
     </div>
     <div class="component-grid">${renderComponentBars(system)}</div>
     ${renderGeographyEvidence(system)}
