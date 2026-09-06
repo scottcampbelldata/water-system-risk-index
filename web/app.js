@@ -587,16 +587,25 @@ async function selectByPwsid(pwsid, zoom) {
     try {
       record = await api(`/systems/${encodeURIComponent(pwsid)}`);
     } catch (error) {
+      if (myToken !== selectToken) return;
       console.error(`Could not load system ${pwsid}:`, error);
+      els.errorBanner.textContent = "This system's details could not be loaded. Choose it again to retry.";
+      els.errorBanner.hidden = false;
       return;
     }
     if (myToken !== selectToken) return; // a newer selection superseded this one
   }
+  clearErrorBanner();
   state.selected = record;
   renderDetail();
   renderTable();
   renderMap();
   focusSelectedOnMap(zoom);
+  // Rendering the table replaces its buttons. Move focus to the new detail
+  // content so keyboard users retain their place and phone users see the result.
+  const detailPanel = document.getElementById("system-detail");
+  detailPanel.focus({ preventScroll: true });
+  detailPanel.scrollIntoView({ block: "start", behavior: "instant" });
 }
 
 function renderTable() {
@@ -615,10 +624,10 @@ function renderTable() {
   }
 
   els.systemsTable.innerHTML = rows.map(system => `
-    <tr data-pwsid="${esc(system.pwsid)}" tabindex="0" role="button" aria-label="View detail for ${esc(system.name)}" class="${state.selected && state.selected.pwsid === system.pwsid ? "selected" : ""}">
+    <tr class="${state.selected && state.selected.pwsid === system.pwsid ? "selected" : ""}">
       <td>${esc(system.rankStatewide)}</td>
       <td>${esc(system.pwsid)}</td>
-      <td>${esc(system.name)}</td>
+      <td><button type="button" class="system-link" data-pwsid="${esc(system.pwsid)}" aria-controls="system-detail">${esc(system.name)}</button></td>
       <td>${esc(system.county)}</td>
       <td><strong>${formatScore(system.score)}</strong></td>
       <td><span class="pill" style="background:${colors[system.tier]}">${esc(system.tier)}</span></td>
@@ -627,14 +636,8 @@ function renderTable() {
     </tr>
   `).join("");
 
-  els.systemsTable.querySelectorAll("tr").forEach(row => {
-    row.addEventListener("click", () => selectByPwsid(row.dataset.pwsid, true));
-    row.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        selectByPwsid(row.dataset.pwsid, true);
-      }
-    });
+  els.systemsTable.querySelectorAll("button[data-pwsid]").forEach(button => {
+    button.addEventListener("click", () => selectByPwsid(button.dataset.pwsid, true));
   });
 }
 
@@ -758,6 +761,14 @@ function setupTheme() {
 }
 
 setupTheme();
+
+// Keep anchor targets and focused details clear of the responsive sticky header.
+const stickyHeader = document.querySelector(".app-header");
+const updateHeaderHeight = () => document.documentElement.style.setProperty(
+  "--sticky-header-height", `${stickyHeader.getBoundingClientRect().height}px`
+);
+updateHeaderHeight();
+new ResizeObserver(updateHeaderHeight).observe(stickyHeader);
 
 loadApp().catch(error => {
   const main = document.createElement("main");
