@@ -11,9 +11,14 @@ Deployable files (output directory = `web/`):
 - `index.html`
 - `styles.css`
 - `config.js` - sets `window.APP_CONFIG.apiBase`
+- `theme.js` - applies the stored theme before first paint
 - `app.js`
+- `favicon.svg`
+- `fonts/*.woff2` - Archivo variable, self-hosted because CSP is `font-src 'self'`
 - `vendor/leaflet/*`
 - `data/ohio_map.json`, `data/ohio_counties.geojson` - static map assets (well under 25 MiB)
+
+Visual system and its non-negotiables are documented in [`../DESIGN.md`](../DESIGN.md).
 
 ## Configure the API base URL
 

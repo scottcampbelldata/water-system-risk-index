@@ -65,15 +65,41 @@ function prettyKinds(value) {
   return value.split("|").map(k => swapKindLabels[k] || k.replace(/_/g, " ")).join(", ");
 }
 
-// Coherent calm -> alarm risk spectrum (the page's signature). Sequential, and
-// each value is dark enough for white pill/legend text to meet WCAG AA at 12px.
-const colors = {
-  "Critical Review": "#93202a",
-  "High Review": "#b14a26",
-  "Moderate Review": "#9a6b16",
-  "Monitor": "#1f7d86",
-  "Lower Priority": "#46687a"
+// The review ramp lives in styles.css so a single source governs both the sheet
+// and the map, and so a theme change moves both together. It is monotonic in
+// lightness, which is what lets the tier survive greyscale.
+const tierVar = {
+  "Critical Review": "--tier-critical",
+  "High Review": "--tier-high",
+  "Moderate Review": "--tier-moderate",
+  "Monitor": "--tier-monitor",
+  "Lower Priority": "--tier-lower"
 };
+
+function cssVar(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
+function tierColor(tier) {
+  return cssVar(tierVar[tier] || "--ink-3", "#6b706a");
+}
+
+function tierSlug(tier) {
+  return String(tier).toLowerCase().replace(/\s+/g, "-");
+}
+
+// State is a mark, not a hue: five notches filled to the tier's step, so the
+// ranking reads correctly in greyscale, under colour-blindness, and in print.
+function tierMark(tier) {
+  const step = tierOrder.length - tierOrder.indexOf(tier);
+  let notches = "";
+  for (let i = 1; i <= tierOrder.length; i += 1) {
+    notches += i <= step ? '<i class="on"></i>' : "<i></i>";
+  }
+  return `<span class="tier-mark" data-tier="${tierSlug(tier)}">` +
+    `<span class="tier-ramp" aria-hidden="true">${notches}</span>${esc(tier)}</span>`;
+}
 
 const componentLabels = {
   compliance_risk_component: "Compliance",
@@ -85,6 +111,18 @@ const componentLabels = {
   data_quality_penalty: "Data quality"
 };
 
+// Published weights, shown beside each component so a score can be read back to
+// what produced it rather than taken on trust.
+const componentWeights = {
+  compliance_risk_component: "30% weight",
+  enforcement_risk_component: "15% weight",
+  vulnerability_component: "20% weight",
+  drought_component: "10% weight",
+  funding_gap_component: "15% weight",
+  small_system_component: "10% weight",
+  data_quality_penalty: "-5% weight"
+};
+
 const tierOrder = ["Critical Review", "High Review", "Moderate Review", "Monitor", "Lower Priority"];
 
 const els = {
@@ -92,6 +130,12 @@ const els = {
   metricHigh: document.getElementById("metricHigh"),
   metricCritical: document.getElementById("metricCritical"),
   metricValidation: document.getElementById("metricValidation"),
+  ledgerModerate: document.getElementById("ledgerModerate"),
+  ledgerApprox: document.getElementById("ledgerApprox"),
+  findingCluster: document.getElementById("findingCluster"),
+  noteApprox: document.getElementById("noteApprox"),
+  noteTotal: document.getElementById("noteTotal"),
+  editionLine: document.getElementById("editionLine"),
   geoVerified: document.getElementById("geoVerified"),
   geoModeled: document.getElementById("geoModeled"),
   geoApproximate: document.getElementById("geoApproximate"),
@@ -137,6 +181,16 @@ function formatNumber(value) {
   return Number(value).toLocaleString();
 }
 
+function formatDate(iso) {
+  if (!iso) return "";
+  const parts = String(iso).split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return String(iso);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
+  }).format(date);
+}
+
 function formatScore(value) {
   if (value === null || value === undefined) return "--";
   return Number(value).toFixed(2);
@@ -171,7 +225,12 @@ function clearErrorBanner() {
 
 function setLoading(isLoading) {
   state.loading = isLoading;
-  if (els.appShell) els.appShell.setAttribute("aria-busy", isLoading ? "true" : "false");
+  if (els.appShell) {
+    els.appShell.setAttribute("aria-busy", isLoading ? "true" : "false");
+    // One authored moment: the whole field settles together, so a single filter
+    // change reads as one linked update, not four independent refreshes.
+    els.appShell.dataset.updating = isLoading ? "true" : "false";
+  }
   if (isLoading && els.systemsTable && !els.systemsTable.children.length) {
     els.systemsTable.innerHTML = `<tr class="table-status"><td colspan="8">Loading…</td></tr>`;
   }
@@ -258,18 +317,17 @@ async function applyFilters({ resetSelection } = { resetSelection: true }) {
   systemsParams.set("page_size", String(state.pageSize));
 
   setLoading(true);
-  let summary, systems, points;
+  let summary, systems;
   try {
-    [summary, systems, points] = await Promise.all([
+    [summary, systems] = await Promise.all([
       api("/summary", base),
-      api("/systems", systemsParams),
-      api("/map/points", base)
+      api("/systems", systemsParams)
     ]);
   } catch (error) {
     if (token !== state.loadToken) return; // a newer request superseded this one
     setLoading(false);
     // Non-fatal: keep prior state and surface an inline banner instead of the fatal handler.
-    showErrorBanner(`Could not refresh data: ${error.message}`);
+    showErrorBanner(`Could not refresh the data. ${error.message}. Adjust a filter or reload the page to try again.`);
     if (els.systemsTable) {
       els.systemsTable.querySelectorAll("tr.table-status").forEach(row => row.remove());
     }
@@ -283,27 +341,90 @@ async function applyFilters({ resetSelection } = { resetSelection: true }) {
   state.summary = summary;
   state.items = systems.items;
   state.total = systems.total;
-  state.points = points;
 
-  if (resetSelection || !state.selected || !state.points.some(p => p.pwsid === state.selected.pwsid)) {
+  if (resetSelection || !state.selected) {
     state.selected = state.items[0] || null;
   }
 
   render();
   setLoading(false);
-  fitMapToFiltered();
+  // The map point set is several megabytes. It loads after the page is usable, so
+  // a headline figure never waits on map geometry.
+  loadPoints(token, base);
   // Service-area boundaries can be a few MB statewide; load them without blocking the dashboard.
   loadBoundaries(token, base);
   loadSwap(token, base); // no-op unless the user has enabled the SWAP overlay
 }
 
+// /metadata is 5 KB and already carries every headline figure. Painting from it
+// puts the finding on screen in about half a second instead of after the map
+// payload lands. /summary later overwrites these with filter-aware counts.
+function renderMetadataFigures() {
+  const m = state.metadata;
+  if (!m) return;
+  els.metricTotal.textContent = formatNumber(m.systemCount);
+  els.metricHigh.textContent = formatNumber(m.highReviewCount);
+  els.metricCritical.textContent = formatNumber(m.criticalReviewCount);
+  els.metricValidation.textContent = `${m.validationPassCount} of ${m.validationCheckCount}`;
+
+  if (els.editionLine) {
+    els.editionLine.textContent =
+      `${m.state} / Model ${m.modelVersion} / Scored ${formatDate(m.scoreDate)}`;
+  }
+  if (els.findingCluster) {
+    els.findingCluster.textContent = m.criticalReviewCount === 0
+      ? "None reach Critical Review."
+      : `${formatNumber(m.criticalReviewCount)} reach Critical Review.`;
+  }
+
+  const geo = m.geographyBreakdown || {};
+  els.geoVerified.textContent = formatNumber(geo.verifiedServiceAreas);
+  els.geoModeled.textContent = formatNumber(geo.modeledServiceAreas);
+  els.geoApproximate.textContent = formatNumber(geo.approximateLocations);
+  els.geoUnmatched.textContent = formatNumber(geo.unmatchedGeography);
+  els.geoSourceProtection.textContent = geo.sourceProtectionAvailable === undefined
+    ? "not loaded"
+    : formatNumber(geo.sourceProtectionAvailable);
+  if (els.noteApprox) els.noteApprox.textContent = formatNumber(geo.approximateLocations);
+  if (els.noteTotal) els.noteTotal.textContent = formatNumber(m.systemCount);
+  if (els.ledgerApprox) els.ledgerApprox.textContent = formatNumber(geo.approximateLocations);
+}
+
 function renderMetrics() {
   const summary = state.summary;
   const tierCount = tier => (summary.tiers.find(row => row.tier === tier) || { systems: 0 }).systems;
+  const high = tierCount("High Review");
+  const critical = tierCount("Critical Review");
+
   els.metricTotal.textContent = formatNumber(summary.total);
-  els.metricHigh.textContent = formatNumber(tierCount("High Review"));
-  els.metricCritical.textContent = formatNumber(tierCount("Critical Review"));
-  els.metricValidation.textContent = `${state.metadata.validationPassCount}/${state.metadata.validationCheckCount}`;
+  els.metricHigh.textContent = formatNumber(high);
+  if (els.ledgerModerate) els.ledgerModerate.textContent = formatNumber(tierCount("Moderate Review"));
+  els.metricCritical.textContent = formatNumber(critical);
+  els.metricValidation.textContent =
+    `${state.metadata.validationPassCount} of ${state.metadata.validationCheckCount}`;
+
+  if (els.editionLine) {
+    els.editionLine.textContent =
+      `${state.metadata.state} / Model ${state.metadata.modelVersion} / Scored ${formatDate(state.metadata.scoreDate)}`;
+  }
+
+  // The second line of the finding is computed from the current summary, never
+  // asserted. It states only what these counts can support.
+  if (els.findingCluster) {
+    const counties = (summary.topCounties || []).filter(row => row.highReviewSystems > 0);
+    const held = counties.reduce((sum, row) => sum + row.highReviewSystems, 0);
+    const sentences = [];
+    sentences.push(critical === 0
+      ? "None reach Critical Review."
+      : `${formatNumber(critical)} reach Critical Review.`);
+    if (counties.length > 1 && high > 0) {
+      sentences.push(
+        `The ${counties.length} counties charted below hold ${formatNumber(held)} of them, ` +
+        `and ${counties[0].county} County leads with ${formatNumber(counties[0].highReviewSystems)}.`
+      );
+    }
+    els.findingCluster.textContent = sentences.join(" ");
+  }
 
   const geo = summary.geography || {};
   els.geoVerified.textContent = formatNumber(geo.verifiedServiceAreas);
@@ -311,13 +432,19 @@ function renderMetrics() {
   els.geoApproximate.textContent = formatNumber(geo.approximateLocations);
   els.geoUnmatched.textContent = formatNumber(geo.unmatchedGeography);
   els.geoSourceProtection.textContent = geo.sourceProtectionAvailable === undefined
-    ? "--"
+    ? "not loaded"
     : formatNumber(geo.sourceProtectionAvailable);
+
+  // The limitation is stated with this run's own numbers rather than numbers
+  // baked into the markup, so it cannot drift out of step with the data.
+  if (els.noteApprox) els.noteApprox.textContent = formatNumber(geo.approximateLocations);
+  if (els.ledgerApprox) els.ledgerApprox.textContent = formatNumber(geo.approximateLocations);
+  if (els.noteTotal) els.noteTotal.textContent = formatNumber(summary.total);
 }
 
 function renderLegend() {
   els.tierLegend.innerHTML = tierOrder.map(tier => `
-    <span class="legend-item"><span class="dot" style="background:${colors[tier]}"></span>${tier}</span>
+    <span class="legend-item"><span class="dot" style="background:${tierColor(tier)}"></span>${tier}</span>
   `).join("");
 }
 
@@ -348,7 +475,10 @@ function renderOverlayLegend() {
 function renderBarChart(container, rows, valueKey, labelKey, colorFn) {
   const max = Math.max(1, ...rows.map(row => row[valueKey]));
   container.innerHTML = rows.map(row => {
-    const width = Math.max(2, (row[valueKey] / max) * 100);
+    // A zero count draws no bar. A minimum-width floor on an empty tier reads
+    // as a small non-zero value, which is a lie the eye believes before the figure.
+    const value = row[valueKey] || 0;
+    const width = value > 0 ? Math.max(1.2, (value / max) * 100) : 0;
     const color = colorFn(row);
     return `
       <div class="bar-row">
@@ -369,7 +499,7 @@ function renderCharts() {
   if (!anyTier) {
     els.tierChart.innerHTML = `<p class="muted chart-empty">No systems match these filters.</p>`;
   } else {
-    renderBarChart(els.tierChart, tierRows, "systems", "tier", row => colors[row.tier]);
+    renderBarChart(els.tierChart, tierRows, "systems", "tier", row => tierColor(row.tier));
   }
 
   const countyRows = state.summary.topCounties || [];
@@ -378,7 +508,7 @@ function renderCharts() {
     countyRows.length ? countyRows : [{ county: "No high-review records in filter", highReviewSystems: 0 }],
     "highReviewSystems",
     "county",
-    () => "var(--accent)"
+    () => "var(--ink)"
   );
 }
 
@@ -479,6 +609,19 @@ function withBbox(base) {
   return params;
 }
 
+async function loadPoints(token, base) {
+  try {
+    const points = await api("/map/points", base);
+    if (token !== state.loadToken) return; // a newer request superseded this one
+    state.points = points;
+    renderMap();
+    fitMapToFiltered();
+  } catch (error) {
+    if (token !== state.loadToken) return;
+    showErrorBanner(`Could not load the map points. ${error.message}. The ranked list below is unaffected.`);
+  }
+}
+
 async function loadBoundaries(token, base) {
   if (!state.boundaryLayer || !state.map.hasLayer(state.boundaryLayer)) return;
   try {
@@ -520,9 +663,9 @@ function markerStyle(system, selected = false) {
   const high = ["Critical Review", "High Review"].includes(system.tier);
   return {
     radius: selected ? 8 : high ? 5 : 3.5,
-    color: selected ? "#17201c" : "#ffffff",
+    color: selected ? cssVar("--ink", "#1b1d1c") : cssVar("--paper", "#edede8"),
     weight: selected ? 2.5 : 1,
-    fillColor: colors[system.tier] || "#64748b",
+    fillColor: tierColor(system.tier),
     fillOpacity: selected ? 1 : 0.78
   };
 }
@@ -625,12 +768,12 @@ function renderTable() {
 
   els.systemsTable.innerHTML = rows.map(system => `
     <tr class="${state.selected && state.selected.pwsid === system.pwsid ? "selected" : ""}">
-      <td>${esc(system.rankStatewide)}</td>
-      <td>${esc(system.pwsid)}</td>
+      <td class="rank">${esc(system.rankStatewide)}</td>
+      <td class="code" translate="no">${esc(system.pwsid)}</td>
       <td><button type="button" class="system-link" data-pwsid="${esc(system.pwsid)}" aria-controls="system-detail">${esc(system.name)}</button></td>
       <td>${esc(system.county)}</td>
-      <td><strong>${formatScore(system.score)}</strong></td>
-      <td><span class="pill" style="background:${colors[system.tier]}">${esc(system.tier)}</span></td>
+      <td class="num">${formatScore(system.score)}</td>
+      <td>${tierMark(system.tier)}</td>
       <td>${esc((system.drivers?.[0]) ?? "")}</td>
       <td>${esc(String(system.spatialConfidence || "").replace(/_/g, " "))}</td>
     </tr>
@@ -644,8 +787,8 @@ function renderTable() {
 function renderComponentBars(system) {
   return Object.entries(system.components ?? {}).map(([key, value]) => `
     <div class="component-row">
-      <span>${esc(componentLabels[key] || key)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value || 0))}%;background:var(--accent)"></div></div>
+      <span>${esc(componentLabels[key] || key)}<br><span class="component-weight">${esc(componentWeights[key] || "")}</span></span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(100, value || 0))}%"></div></div>
       <strong class="bar-value">${formatScore(value)}</strong>
     </div>
   `).join("");
@@ -680,7 +823,7 @@ function renderDetail() {
   const system = state.selected;
   if (!system) {
     els.detailSubtitle.textContent = "No records match the current filters.";
-    els.systemDetail.innerHTML = "<p class=\"muted\">Adjust filters to restore results.</p>";
+    els.systemDetail.innerHTML = "<p class=\"funding-note\">Adjust the filters to restore results.</p>";
     return;
   }
   els.detailSubtitle.textContent = `${system.pwsid} | ${system.county}`;
@@ -688,9 +831,9 @@ function renderDetail() {
     <div class="detail-title">
       <div>
         <h3>${esc(system.name)}</h3>
-        <p class="muted">Rank ${esc(system.rankStatewide)} statewide | Rank ${esc(system.rankCounty)} in ${esc(system.county)}</p>
+        <p>Rank ${esc(system.rankStatewide)} statewide. Rank ${esc(system.rankCounty)} in ${esc(system.county)}.</p>
       </div>
-      <span class="pill" style="background:${colors[system.tier]}">${esc(system.tier)}</span>
+      ${tierMark(system.tier)}
     </div>
     <div class="fact-grid">
       <div class="fact"><span>Score</span><strong>${formatScore(system.score)}</strong></div>
@@ -704,8 +847,8 @@ function renderDetail() {
     </div>
     <div class="component-grid">${renderComponentBars(system)}</div>
     ${renderGeographyEvidence(system)}
-    <p>${esc(system.explanation)}</p>
-    <p class="muted">Funding match: ${esc(system.fundingMatchConfidence)}. ${esc(system.fundingNotes)}</p>
+    <p class="explanation">${esc(system.explanation)}</p>
+    <p class="funding-note">Funding match: ${esc(system.fundingMatchConfidence)}. ${esc(system.fundingNotes)}</p>
   `;
 }
 
@@ -718,12 +861,128 @@ function render() {
   renderDetail();
 }
 
+
+// ---------------------------------------------------------------- hero plate
+// The opening map is drawn from web/data/ohio_counties.geojson (65 KB, bundled)
+// rather than from the API, so the page's focal point is on screen immediately
+// and never waits on the multi-megabyte point set.
+
+const HERO_STEPS = 6;
+
+function mercatorY(lat) {
+  // Scaled to degrees so it shares units with longitude on the x axis; without
+  // the conversion the state renders about a tenth of its true height.
+  // Negated so that increasing latitude moves up the SVG.
+  return -(180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+}
+
+function heroScaleFor(values) {
+  const sorted = values.slice().sort((a, b) => a - b);
+  // Quantile breaks: an equal-interval scale on this distribution leaves the
+  // top two bands almost empty and the map reads as one flat colour.
+  const breaks = [];
+  for (let i = 1; i < HERO_STEPS; i += 1) {
+    breaks.push(sorted[Math.floor((i / HERO_STEPS) * sorted.length)]);
+  }
+  return value => {
+    let step = 0;
+    while (step < breaks.length && value >= breaks[step]) step += 1;
+    return step + 1;
+  };
+}
+
+async function renderHeroMap() {
+  const host = document.getElementById("heroMap");
+  if (!host) return;
+
+  let geo;
+  try {
+    const response = await fetch("data/ohio_counties.geojson");
+    if (!response.ok) throw new Error(`status ${response.status}`);
+    geo = await response.json();
+  } catch (error) {
+    host.remove(); // the finding still reads without its plate
+    return;
+  }
+
+  const features = (geo.features || []).filter(f => f.geometry && f.geometry.coordinates);
+  if (!features.length) { host.remove(); return; }
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  features.forEach(f => f.geometry.coordinates.forEach(ring => ring.forEach(([lon, lat]) => {
+    const y = mercatorY(lat);
+    if (lon < minX) minX = lon;
+    if (lon > maxX) maxX = lon;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  })));
+
+  const W = 620;
+  const H = Math.round(W * ((maxY - minY) / (maxX - minX)));
+  const px = lon => ((lon - minX) / (maxX - minX)) * W;
+  const py = lat => ((mercatorY(lat) - minY) / (maxY - minY)) * H;
+
+  const stepOf = heroScaleFor(features.map(f => f.properties.avg_score || 0));
+  const maxHigh = Math.max(1, ...features.map(f => f.properties.high_review_count || 0));
+
+  const paths = [];
+  const marks = [];
+  features.forEach((f, i) => {
+    const p = f.properties || {};
+    const step = stepOf(p.avg_score || 0);
+    const high = p.high_review_count || 0;
+    const d = f.geometry.coordinates
+      .map(ring => "M" + ring.map(([lon, lat]) => `${px(lon).toFixed(1)} ${py(lat).toFixed(1)}`).join("L") + "Z")
+      .join("");
+    const name = String(p.county_name || "").replace(/ County$/, "");
+    paths.push(
+      `<path class="county${high > 0 ? " is-hot" : ""}" d="${d}" fill="var(--c${step})" style="--i:${i}"` +
+      ` data-name="${esc(name)}" data-high="${high}" data-systems="${p.system_count || 0}"` +
+      ` data-score="${(p.avg_score || 0).toFixed(1)}"><title>${esc(name)}: ${high} high review</title></path>`
+    );
+    if (high > 0) {
+      // Centroid of the outer ring is close enough at state scale.
+      const ring = f.geometry.coordinates[0];
+      let sx = 0, sy = 0;
+      ring.forEach(([lon, lat]) => { sx += px(lon); sy += py(lat); });
+      const r = 1.6 + 4.4 * Math.sqrt(high / maxHigh);
+      marks.push(`<circle class="county-mark" cx="${(sx / ring.length).toFixed(1)}" cy="${(sy / ring.length).toFixed(1)}" r="${r.toFixed(1)}"/>`);
+    }
+  });
+
+  host.innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" focusable="false">` +
+    `<g>${paths.join("")}</g><g>${marks.join("")}</g></svg>`;
+
+  const scale = document.getElementById("heroScale");
+  if (scale) {
+    let cells = "";
+    for (let i = 1; i <= HERO_STEPS; i += 1) cells += `<i style="background:var(--c${i})"></i>`;
+    scale.innerHTML = cells;
+  }
+
+  const readout = document.getElementById("heroReadout");
+  if (readout) {
+    const show = event => {
+      const el = event.target.closest(".county");
+      if (!el) return;
+      const high = Number(el.dataset.high);
+      readout.textContent =
+        `${el.dataset.name}: ${formatNumber(el.dataset.systems)} systems, ` +
+        `${high} high review, mean score ${el.dataset.score}`;
+    };
+    host.addEventListener("pointermove", show);
+    host.addEventListener("pointerleave", () => { readout.textContent = ""; });
+  }
+}
+
 async function loadApp() {
   state.metadata = await api("/metadata");
   els.useNotice.textContent = state.metadata.useNote;
   els.useNotice.hidden = false;
   els.sourceNote.textContent = state.metadata.sourceNote;
 
+  renderMetadataFigures();
   initFilters(state.metadata);
   initializeMap();
   await applyFilters({ resetSelection: true });
@@ -754,6 +1013,10 @@ function setupTheme() {
     }
     try { localStorage.setItem("theme", choice); } catch (e) { /* private mode */ }
     sync();
+    // The ramp is read back from CSS, so a theme change has to repaint anything
+    // JavaScript coloured: legend swatches, index bars and map markers.
+    if (state.summary) { renderLegend(); renderCharts(); }
+    if (state.map) renderMap();
   };
 
   buttons.forEach(b => b.addEventListener("click", () => apply(b.dataset.themeChoice)));
@@ -762,13 +1025,30 @@ function setupTheme() {
 
 setupTheme();
 
+// The plate depends on nothing but a bundled file, so it paints before the first
+// API response rather than after it.
+renderHeroMap();
+
 // Keep anchor targets and focused details clear of the responsive sticky header.
-const stickyHeader = document.querySelector(".app-header");
+const stickyHeader = document.querySelector(".masthead");
 const updateHeaderHeight = () => document.documentElement.style.setProperty(
   "--sticky-header-height", `${stickyHeader.getBoundingClientRect().height}px`
 );
 updateHeaderHeight();
 new ResizeObserver(updateHeaderHeight).observe(stickyHeader);
+
+// The map container is flex-sized inside the survey band, so Leaflet has to be
+// told when the grid settles on a height.
+const mapHost = document.getElementById("streetMap");
+if (mapHost && "ResizeObserver" in window) {
+  let mapResizeFrame = 0;
+  new ResizeObserver(() => {
+    cancelAnimationFrame(mapResizeFrame);
+    mapResizeFrame = requestAnimationFrame(() => {
+      if (state.map) state.map.invalidateSize({ animate: false });
+    });
+  }).observe(mapHost);
+}
 
 loadApp().catch(error => {
   const main = document.createElement("main");
