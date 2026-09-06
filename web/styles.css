@@ -942,6 +942,7 @@ tbody td:nth-child(3) {
 
 .filters-more {
   justify-content: flex-end;
+  align-items: flex-start;
 }
 
 /* ------------------------------------------------------------ disclosures */
@@ -1885,6 +1886,73 @@ th:nth-child(5) {
 }
 
 @media (max-width: 640px) {
+  /* Six columns need 594px and the viewport is 343, so the table was scrolling
+     sideways inside a page that already scrolls down. PWSID and county are
+     lookup detail and both appear on the record; the tier label is folded to
+     its notches, which already carry the ranking. */
+  table :is(th, td):nth-child(2),
+  table :is(th, td):nth-child(4) {
+    display: none;
+  }
+
+  /* Clipped rather than display:none, so the tier still reaches a screen reader. */
+  tbody .tier-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  /* A nowrap header cannot shrink below its own text, so "Review tier" was
+     holding 94px for a 41px mark. Let heads wrap on a phone. */
+  thead th {
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  /* Fixed layout is what actually forces the name to truncate. Under auto
+     layout the column sizes to its content, so a long system name pushed the
+     table wider than the phone however tight the other columns got. */
+  .table-wrap table {
+    table-layout: fixed;
+  }
+
+  thead th:nth-child(1) { width: 38px; }
+  thead th:nth-child(5) { width: 54px; }
+  thead th:nth-child(6) { width: 48px; }
+
+  tbody td,
+  thead th,
+  tbody td.num,
+  thead th:nth-child(5) {
+    padding-right: var(--s-2);
+  }
+
+  /* Rank is right-aligned and butts straight into the name, so it keeps a wider
+     gutter than the rest. */
+  tbody td.rank,
+  thead th:nth-child(1) {
+    padding-right: var(--s-3);
+  }
+
+  tbody td:nth-child(3),
+  .system-link {
+    max-width: none;
+  }
+
+  .table-wrap {
+    max-height: min(70vh, 520px);
+  }
+
+  /* The sticky bar was taking 98px of an 844px viewport. */
+  .masthead-inner {
+    padding-top: var(--s-2);
+    padding-bottom: var(--s-2);
+    gap: var(--s-1) var(--s-3);
+  }
+
   body {
     font-size: var(--t-body);
   }
