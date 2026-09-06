@@ -81,13 +81,19 @@ Colour is never the sole carrier of tier meaning anywhere in the interface.
 
 ## Motion
 
-One authored moment. A filter change sets `data-updating` on the app shell, which fades
-every `.settles` region to 0.45 in 90ms and returns it over 340ms on an exponential
-ease-out. The effect is that one control visibly propagates across the map, both indexes,
-the table and the record as a single linked update rather than four independent refreshes.
+Three moments, each with a job. Nothing else animates.
 
-Nothing else animates. Bars land rather than grow, because animating `width` forces
-layout. The whole system collapses under `prefers-reduced-motion`.
+1. **The linked update.** A filter change sets `data-updating` on the app shell, fading
+   every `.settles` region to 0.45 in 90ms and returning it over 340ms on an exponential
+   ease-out, so one control visibly propagates across the map, both indexes, the table and
+   the record as a single update rather than four independent refreshes.
+2. **The plate entrance.** The 88 counties stagger in at `calc(var(--i) * 7ms)`, a ~615ms
+   cascade that draws the eye to the page's focal element once.
+3. **Map selection.** Choosing a system pans the Leaflet map to it, which is spatial
+   feedback for the selection, not decoration.
+
+Bars land rather than grow, because animating `width` forces layout. All three collapse
+under `prefers-reduced-motion`.
 
 ## Structure
 
@@ -113,8 +119,13 @@ The table sheds its two least-critical columns (leading driver, geometry) via a 
 query when its panel is under 860px, because eight columns in a 720px panel wrap every cell
 to three lines. The record repeats both fields anyway.
 
-No count from a single model run is ever hardcoded in markup. Every figure on the page,
-including the ones inside prose limitations, is filled from the API at render time.
+No count from a single model run is hardcoded in markup, including inside the hero plate's
+accessible name. Every figure is filled from the API at render time.
+
+The one deliberate exception is the seven component weights, which are mirrored as static
+markup in `index.html` and as label strings in `app.js`. The API does not expose them, and
+they are model constants rather than run results. They must be kept in step with
+`config/scoring_weights.yaml` by hand; if the API ever serves them, read them instead.
 
 ## Constraints that bind any future change
 
