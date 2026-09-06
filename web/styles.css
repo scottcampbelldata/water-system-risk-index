@@ -106,7 +106,6 @@
 
   --t-h3: clamp(1.25rem, 2.4vw, 1.75rem);
   --t-h2: clamp(1.15rem, 2vw, 1.5rem);
-  --t-h2-sm: 1.05rem;
   --t-display: clamp(2.3rem, 4.3vw, 3.9rem);
 
   /* ---- Weight, width and tracking. The width axis does real work here, so
@@ -1633,13 +1632,14 @@ th:nth-child(5) {
 }
 
 .notes h2 {
-  margin: 0 0 var(--s-3);
+  margin: 0 0 var(--s-4);
   padding-bottom: var(--s-2);
   border-bottom: var(--hair) solid var(--ink);
-  font-size: var(--t-h2-sm);
-  font-stretch: var(--wd-condensed);
-  font-weight: var(--w-bold);
-  letter-spacing: var(--ls-tight);
+  font-size: var(--t-h2);
+  font-stretch: var(--wd-narrow);
+  font-weight: var(--w-heading);
+  letter-spacing: var(--ls-tighter);
+  text-wrap: balance;
 }
 
 .notes p {
@@ -1649,6 +1649,40 @@ th:nth-child(5) {
   color: var(--ink-2);
 }
 
+.weight-bar {
+  display: flex;
+  height: 10px;
+  margin: 0 0 var(--s-2);
+  gap: 1px;
+}
+
+.weight-bar i {
+  display: block;
+  min-width: 2px;
+  box-shadow: inset 0 0 0 1px var(--ov-swatch-edge);
+}
+
+.weight-note {
+  margin: 0 0 var(--s-5);
+  font-size: var(--t-caption);
+  color: var(--ink-3);
+}
+
+.weight-key {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px var(--ov-swatch-edge);
+}
+
+[data-step="1"] { background: var(--c1); }
+[data-step="2"] { background: var(--c2); }
+[data-step="3"] { background: var(--c3); }
+[data-step="4"] { background: var(--c4); }
+[data-step="5"] { background: var(--c5); }
+[data-step="6"] { background: var(--c6); }
+[data-step="0"] { background: transparent; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+
 .weights {
   list-style: none;
   margin: 0 0 var(--s-4);
@@ -1657,12 +1691,27 @@ th:nth-child(5) {
 
 .weights li {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--s-3);
   padding: var(--s-2) 0;
   border-bottom: var(--hair) solid var(--rule);
   font-size: var(--t-dense);
+}
+
+.weights li > span {
+  flex: 1 1 auto;
+}
+
+.weights li > b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The penalty is a deduction, not a share of the hundred. */
+.weights li.weight-deduction {
+  border-bottom: 0;
+  border-top: var(--hair) solid var(--ink);
+  margin-top: var(--s-1);
+  color: var(--ink-2);
 }
 
 .weights li b {
@@ -1670,14 +1719,6 @@ th:nth-child(5) {
   letter-spacing: var(--ls-tight);
 }
 
-/* Structural voids carry the dot matrix, the way a plate section fills a
-   cleared column rather than leaving it blank. */
-.matrix {
-  min-height: 96px;
-  background-image: radial-gradient(var(--rule) 0.9px, transparent 0.9px);
-  background-size: 8px 8px;
-  opacity: 0.75;
-}
 
 /* ------------------------------------------------------------------ links */
 
@@ -1734,12 +1775,16 @@ th:nth-child(5) {
 .colophon {
   border-top: var(--hair) solid var(--ink);
   padding: var(--s-5) 0 var(--s-8);
-  max-width: 88ch;
   font-size: var(--t-caption);
   font-stretch: var(--wd-narrow);
   font-weight: var(--w-medium);
   color: var(--ink-3);
   line-height: 1.7;
+}
+
+.colophon > span {
+  display: block;
+  max-width: 88ch;
 }
 
 /* ------------------------------------------------------------ responsive */

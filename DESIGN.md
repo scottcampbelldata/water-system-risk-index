@@ -92,6 +92,16 @@ brightness(1.08)` in light. The tiles are ground; the tier markers carry the sig
 ## Charts
 
 One bar treatment everywhere: a 6px bar on a hairline baseline, never a filled track.
+
+Compositions get a stacked bar plus a ruled key: the seven scoring weights, and the four
+geometry-provenance tiers. Segments take the `--c1` to `--c6` ramp with a hairline edge,
+because the palest step sits close to the paper and the largest share would otherwise read
+as a gap. Anything that is not a share of the whole, like the data-quality deduction, sits
+below a rule with an outlined swatch rather than a filled one.
+
+**No decorative fill.** A dot-matrix block once filled the short column under the
+limitations. If a column looks empty it needs content, and the content that belonged there
+was the geometry breakdown that makes the caveat above it concrete.
 Bars carry the colour of what they measure. Review-tier bars take their tier's ramp colour;
 the county chart measures high-review counts, so its bars take `--tier-high`; component
 bars inside a record are neutral `--ink-3`, because there the figure is the point.
