@@ -68,6 +68,17 @@
   --flag-ink: #6d2f1f;
   --flag-field: #e8ded6;
 
+  /* Map overlay palette. These paint polygons and their legend swatches, so
+     they belong to the colour system rather than to app.js. */
+  --ov-verified: #14746f;
+  --ov-modeled: #9a6a12;
+  --ov-groundwater: #1d4ed8;
+  --ov-inner-zone: #6b21a8;
+  --ov-surface: #15803d;
+  --ov-county: #8a8f88;
+  --ov-fallback: #5a5f58;
+  --ov-swatch-edge: rgba(12, 12, 11, 0.28);
+
   /* Choropleth ramp for the opening plate, low score to high. */
   --c1: #f0eee7;
   --c2: #e7d8c2;
@@ -115,8 +126,26 @@
     --c6: #ff5330;
     --c-land: #1a1e20;
 
-    --map-tile-filter: invert(0.93) hue-rotate(178deg) brightness(0.92)
-      contrast(0.88) saturate(0.7);
+  --ov-verified: #4fd1c5;
+  --ov-modeled: #e3b341;
+  --ov-groundwater: #7aa7ff;
+  --ov-inner-zone: #c79bff;
+  --ov-surface: #6ee7a0;
+  --ov-county: #6d736c;
+  --ov-fallback: #9aa097;
+  --ov-swatch-edge: rgba(236, 234, 227, 0.34);
+
+    --ov-verified: #4fd1c5;
+    --ov-modeled: #e3b341;
+    --ov-groundwater: #7aa7ff;
+    --ov-inner-zone: #c79bff;
+    --ov-surface: #6ee7a0;
+    --ov-county: #6d736c;
+    --ov-fallback: #9aa097;
+    --ov-swatch-edge: rgba(236, 234, 227, 0.34);
+
+    --map-tile-filter: invert(0.93) hue-rotate(178deg) brightness(0.9)
+      contrast(0.9) saturate(0.65);
 
     color-scheme: dark;
   }
@@ -1195,7 +1224,7 @@ details.disclosure > summary:hover {
   width: 9px;
   height: 9px;
   flex: 0 0 auto;
-  box-shadow: inset 0 0 0 1px rgba(27, 29, 28, 0.22);
+  box-shadow: inset 0 0 0 1px var(--ov-swatch-edge);
 }
 
 .overlay-legend {

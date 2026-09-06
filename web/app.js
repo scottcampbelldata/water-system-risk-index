@@ -32,25 +32,37 @@ const geometryTierLabels = {
   unmatched: "Unmatched Geography"
 };
 
-const boundaryColors = {
-  verified_service_area_boundary: "#14746f",
-  modeled_service_area_boundary: "#b98322"
+// Overlay colours live in styles.css alongside the rest of the palette, so they
+// follow the theme instead of sitting at one fixed value on both grounds.
+const boundaryVar = {
+  verified_service_area_boundary: "--ov-verified",
+  modeled_service_area_boundary: "--ov-modeled"
 };
 
-const swapColors = {
-  groundwater_swpa: "#2563eb",          // blue  - 5-year groundwater protection area
-  inner_management_zone: "#7c3aed",     // purple - 1-year inner management zone
-  surface_water_inland: "#15803d",      // green - surface-water protection area (watershed)
-  surface_water_lake_erie: "#15803d",
-  surface_water_ohio_river: "#15803d"
+const swapVar = {
+  groundwater_swpa: "--ov-groundwater",       // 5-year groundwater protection area
+  inner_management_zone: "--ov-inner-zone",   // 1-year inner management zone
+  surface_water_inland: "--ov-surface",       // surface-water protection area (watershed)
+  surface_water_lake_erie: "--ov-surface",
+  surface_water_ohio_river: "--ov-surface"
 };
 
-// Three legend categories for the SWAP overlay (surface-water types share a color).
-const swapLegend = [
-  ["#2563eb", "Groundwater protection area"],
-  ["#7c3aed", "Inner management zone"],
-  ["#15803d", "Surface-water protection area"]
-];
+function boundaryColor(tier) {
+  return cssVar(boundaryVar[tier] || "--ov-fallback", "#5a5f58");
+}
+
+function swapColor(kind) {
+  return cssVar(swapVar[kind] || "--ov-fallback", "#5a5f58");
+}
+
+// Three legend categories for the SWAP overlay (surface-water types share a colour).
+function swapLegendRows() {
+  return [
+    [swapColor("groundwater_swpa"), "Groundwater protection area"],
+    [swapColor("inner_management_zone"), "Inner management zone"],
+    [swapColor("surface_water_inland"), "Surface-water protection area"]
+  ];
+}
 
 const swapKindLabels = {
   groundwater_swpa: "Groundwater protection area",
@@ -82,7 +94,7 @@ function cssVar(name, fallback) {
 }
 
 function tierColor(tier) {
-  return cssVar(tierVar[tier] || "--ink-3", "#6b706a");
+  return cssVar(tierVar[tier] || "--ink-3", "#5a5f58");
 }
 
 function tierSlug(tier) {
@@ -461,12 +473,12 @@ function renderOverlayLegend() {
   const sections = [];
   if (state.boundaryLayer && state.map.hasLayer(state.boundaryLayer)) {
     sections.push(legendBlock("Service area boundaries", [
-      [boundaryColors.verified_service_area_boundary, "System-sourced"],
-      [boundaryColors.modeled_service_area_boundary, "Modeled"]
+      [boundaryColor("verified_service_area_boundary"), "System-sourced"],
+      [boundaryColor("modeled_service_area_boundary"), "Modeled"]
     ]));
   }
   if (state.swapLayer && state.map.hasLayer(state.swapLayer)) {
-    sections.push(legendBlock("Source-water protection areas (where supply is protected)", swapLegend));
+    sections.push(legendBlock("Source-water protection areas (where supply is protected)", swapLegendRows()));
   }
   els.overlayLegend.innerHTML = sections.join("");
   els.overlayLegend.hidden = sections.length === 0;
@@ -534,9 +546,9 @@ function initializeMap() {
   state.markerLayer = L.layerGroup().addTo(state.map);
   state.boundaryLayer = L.geoJSON(null, {
     style: feature => ({
-      color: boundaryColors[feature.properties.geometrySourceTier] || "#64748b",
+      color: boundaryColor(feature.properties.geometrySourceTier),
       weight: 1,
-      fillColor: boundaryColors[feature.properties.geometrySourceTier] || "#64748b",
+      fillColor: boundaryColor(feature.properties.geometrySourceTier),
       fillOpacity: 0.18
     }),
     onEachFeature: (feature, layer) => {
@@ -547,10 +559,10 @@ function initializeMap() {
   // service-area boundaries. Off by default and loaded on demand.
   state.swapLayer = L.geoJSON(null, {
     style: feature => ({
-      color: swapColors[feature.properties.areaKind] || "#475569",
+      color: swapColor(feature.properties.areaKind),
       weight: 1,
       dashArray: "4 3",
-      fillColor: swapColors[feature.properties.areaKind] || "#475569",
+      fillColor: swapColor(feature.properties.areaKind),
       fillOpacity: 0.14
     }),
     onEachFeature: (feature, layer) => {
@@ -562,7 +574,7 @@ function initializeMap() {
   });
 
   state.countyLayer = L.geoJSON(null, {
-    style: { color: "#94a3b8", weight: 1, fill: false, dashArray: "3 3" }
+    style: () => ({ color: cssVar("--ov-county", "#8a8f88"), weight: 1, fill: false, dashArray: "3 3" })
   });
 
   L.control.layers(null, {
@@ -663,7 +675,7 @@ function markerStyle(system, selected = false) {
   const high = ["Critical Review", "High Review"].includes(system.tier);
   return {
     radius: selected ? 8 : high ? 5 : 3.5,
-    color: selected ? cssVar("--ink", "#1b1d1c") : cssVar("--paper", "#edede8"),
+    color: selected ? cssVar("--ink", "#0c0c0b") : cssVar("--paper", "#fbfbf9"),
     weight: selected ? 2.5 : 1,
     fillColor: tierColor(system.tier),
     fillOpacity: selected ? 1 : 0.78
@@ -1016,7 +1028,15 @@ function setupTheme() {
     // The ramp is read back from CSS, so a theme change has to repaint anything
     // JavaScript coloured: legend swatches, index bars and map markers.
     if (state.summary) { renderLegend(); renderCharts(); }
-    if (state.map) renderMap();
+    if (state.map) {
+      renderMap();
+      // Vector overlays read their colours from CSS, so they need re-styling
+      // when the tokens change under them.
+      [state.boundaryLayer, state.swapLayer, state.countyLayer].forEach(layer => {
+        if (layer && layer.setStyle) layer.setStyle(layer.options.style);
+      });
+      renderOverlayLegend();
+    }
   };
 
   buttons.forEach(b => b.addEventListener("click", () => apply(b.dataset.themeChoice)));
