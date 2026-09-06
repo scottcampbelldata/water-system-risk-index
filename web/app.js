@@ -1005,6 +1005,18 @@ async function loadApp() {
 // attribute is set by theme.js; this wires the segmented control and keeps the
 // pressed state in sync. "system" clears the attribute so prefers-color-scheme
 // governs. Set up before loadApp so the toggle works even if the API is down.
+// Everything whose colour JavaScript wrote rather than CSS: legend swatches,
+// index bars, map markers and the vector overlays.
+function repaintThemedGraphics() {
+  if (state.summary) { renderLegend(); renderCharts(); }
+  if (!state.map) return;
+  renderMap();
+  [state.boundaryLayer, state.swapLayer, state.countyLayer].forEach(layer => {
+    if (layer && layer.setStyle) layer.setStyle(layer.options.style);
+  });
+  renderOverlayLegend();
+}
+
 function setupTheme() {
   const control = els.themeControl;
   if (!control) return;
@@ -1027,19 +1039,21 @@ function setupTheme() {
     sync();
     // The ramp is read back from CSS, so a theme change has to repaint anything
     // JavaScript coloured: legend swatches, index bars and map markers.
-    if (state.summary) { renderLegend(); renderCharts(); }
-    if (state.map) {
-      renderMap();
-      // Vector overlays read their colours from CSS, so they need re-styling
-      // when the tokens change under them.
-      [state.boundaryLayer, state.swapLayer, state.countyLayer].forEach(layer => {
-        if (layer && layer.setStyle) layer.setStyle(layer.options.style);
-      });
-      renderOverlayLegend();
-    }
+    repaintThemedGraphics();
   };
 
   buttons.forEach(b => b.addEventListener("click", () => apply(b.dataset.themeChoice)));
+
+  // In Auto the OS can change the theme with no click to hang repainting off.
+  // CSS follows on its own; anything JavaScript coloured has to be told.
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const onSystemChange = () => {
+    if (current !== "system") return;
+    repaintThemedGraphics();
+  };
+  if (media.addEventListener) media.addEventListener("change", onSystemChange);
+  else if (media.addListener) media.addListener(onSystemChange);
+
   sync();
 }
 
@@ -1071,11 +1085,13 @@ if (mapHost && "ResizeObserver" in window) {
 }
 
 loadApp().catch(error => {
-  const main = document.createElement("main");
-  main.className = "app-shell";
-  const notice = document.createElement("div");
-  notice.className = "notice";
-  notice.textContent = `The app could not reach its data API. ${error.message}`;
-  main.appendChild(notice);
-  document.body.replaceChildren(main);
+  // Keep the shell. The masthead, the hero plate (which loads from a bundled
+  // file and is unaffected), the method notes and the colophon all still stand
+  // on their own; replacing the body threw away a working page.
+  showErrorBanner(
+    `The data API could not be reached. ${error.message}. ` +
+    `The map and figures below need it; reload to try again.`
+  );
+  document.querySelectorAll(".settles").forEach(el => { el.dataset.stale = "true"; });
+  if (els.appShell) els.appShell.setAttribute("aria-busy", "false");
 });
