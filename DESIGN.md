@@ -48,9 +48,9 @@ accent; the review ramp is the entire colour system.
 | `--rule` | `#dcdcd6` | `#282e30` |
 | `--rule-strong` | `#a3a39c` | `#49514f` |
 
-The hero choropleth uses a six-step **pure neutral** ramp (`--c1` through `--c6`) on
-quantile breaks. Equal intervals were tried first and left the top two bands nearly empty,
-so the state read as one flat value. Score is carried by ink density, not by hue.
+The hero choropleth uses a six-step **cool blue** ramp (`--c1` through `--c6`) on
+quantile breaks, running pale to deep indigo in light and deep to pale in dark. Equal intervals were tried first and left the top two bands nearly empty,
+so the state read as one flat value.
 
 `--signal` (`#d6006b` light, `#ff3d93` dark) is the only saturated colour on the page. It
 marks the counties holding high-review systems and the alarm end of the review ramp, and
@@ -65,11 +65,11 @@ Review ramp, used for map markers, legend swatches and index bars only:
 
 | Tier | Light | Dark |
 |---|---|---|
-| Lower Priority | `#ccd1d0` | `#343b3c` |
-| Monitor | `#9aa1a0` | `#575f60` |
-| Moderate Review | `#676e6d` | `#848d8c` |
+| Lower Priority | `#c6d4e4` | `#29354a` |
+| Monitor | `#93aacb` | `#3f5878` |
+| Moderate Review | `#5c76a3` | `#6484ae` |
 | High Review | `#d6006b` | `#ff3d93` |
-| Critical Review | `#7a0039` | `#ff85bd` |
+| Critical Review | `#7a0039` | `#ff9ecb` |
 
 The ground carries a slight temperature drift (two fixed radial gradients toward
 `--paper-warm` and `--paper-cool`) so it reads as a printed sheet rather than a flat fill.
