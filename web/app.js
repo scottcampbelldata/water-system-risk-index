@@ -426,6 +426,8 @@ function renderMetadataFigures() {
   if (els.noteApprox) els.noteApprox.textContent = formatNumber(geo.approximateLocations);
   if (els.noteTotal) els.noteTotal.textContent = formatNumber(m.systemCount);
   if (els.ledgerApprox) els.ledgerApprox.textContent = formatNumber(geo.approximateLocations);
+
+  renderGeographyComposition(geo, m.systemCount);
 }
 
 function renderMetrics() {
@@ -486,7 +488,35 @@ function renderMetrics() {
   // baked into the markup, so it cannot drift out of step with the data.
   if (els.noteApprox) els.noteApprox.textContent = formatNumber(geo.approximateLocations);
   if (els.ledgerApprox) els.ledgerApprox.textContent = formatNumber(geo.approximateLocations);
+
+  renderGeographyComposition(geo, summary.total);
   if (els.noteTotal) els.noteTotal.textContent = formatNumber(summary.total);
+}
+
+// The geometry caveat is the model's biggest one, so it gets shown rather than
+// only stated. Same composition-bar language the weights use.
+function renderGeographyComposition(geo, total) {
+  const bar = document.getElementById("geoBar");
+  const key = document.getElementById("geoKey");
+  if (!bar || !key) return;
+
+  const rows = [
+    ["System-sourced service area", geo.verifiedServiceAreas, 6],
+    ["Modelled service area", geo.modeledServiceAreas, 4],
+    ["Approximate location", geo.approximateLocations, 2],
+    ["Unmatched", geo.unmatchedGeography, 0]
+  ].filter(row => Number(row[1]) > 0);
+
+  if (!rows.length || !total) { bar.hidden = true; key.hidden = true; return; }
+  bar.hidden = false;
+  key.hidden = false;
+
+  bar.innerHTML = rows.map(([, count, step]) =>
+    `<i style="flex:${count}" data-step="${step}"></i>`).join("");
+
+  key.innerHTML = rows.map(([label, count, step]) =>
+    `<li><i class="weight-key" data-step="${step}" aria-hidden="true"></i>` +
+    `<span>${esc(label)}</span> <b>${formatNumber(count)}</b></li>`).join("");
 }
 
 function renderLegend() {

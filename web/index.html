@@ -12,7 +12,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preload" href="fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=abstract-5">
+    <link rel="stylesheet" href="styles.css?v=abstract-6">
     <script src="theme.js?v=ui-1"></script>
   </head>
   <body>
@@ -243,14 +243,24 @@
               in version-controlled configuration, so any score on this page can be reproduced from
               the published inputs.
             </p>
+            <div class="weight-bar" aria-hidden="true">
+              <i style="flex:30" data-step="1"></i>
+              <i style="flex:20" data-step="2"></i>
+              <i style="flex:15" data-step="3"></i>
+              <i style="flex:15" data-step="4"></i>
+              <i style="flex:10" data-step="5"></i>
+              <i style="flex:10" data-step="6"></i>
+            </div>
+            <p class="weight-note">Six components, summing to 100, then a deduction for data quality.</p>
+
             <ul class="weights">
-              <li><span>Compliance</span> <b>30%</b></li>
-              <li><span>Vulnerability</span> <b>20%</b></li>
-              <li><span>Enforcement</span> <b>15%</b></li>
-              <li><span>Funding gap</span> <b>15%</b></li>
-              <li><span>Small-system context</span> <b>10%</b></li>
-              <li><span>Drought</span> <b>10%</b></li>
-              <li><span>Data-quality penalty</span> <b>-5%</b></li>
+              <li><i class="weight-key" data-step="1" aria-hidden="true"></i><span>Compliance</span> <b>30%</b></li>
+              <li><i class="weight-key" data-step="2" aria-hidden="true"></i><span>Vulnerability</span> <b>20%</b></li>
+              <li><i class="weight-key" data-step="3" aria-hidden="true"></i><span>Enforcement</span> <b>15%</b></li>
+              <li><i class="weight-key" data-step="4" aria-hidden="true"></i><span>Funding gap</span> <b>15%</b></li>
+              <li><i class="weight-key" data-step="5" aria-hidden="true"></i><span>Small-system context</span> <b>10%</b></li>
+              <li><i class="weight-key" data-step="6" aria-hidden="true"></i><span>Drought</span> <b>10%</b></li>
+              <li class="weight-deduction"><i class="weight-key" data-step="0" aria-hidden="true"></i><span>Data-quality penalty</span> <b>-5%</b></li>
             </ul>
           </div>
           <div>
@@ -271,20 +281,23 @@
               should be read as screening context, never as service-area extent. Each record states
               its own geometry provenance.
             </p>
-            <div class="matrix" aria-hidden="true"></div>
+
+            <div class="weight-bar" id="geoBar" aria-hidden="true"></div>
+            <p class="weight-note">How the 16,339 records resolve to geography.</p>
+            <ul class="weights" id="geoKey"></ul>
           </div>
         </section>
 
         <p class="colophon">
-          Public-data screening model built by Scott Campbell. Sources: EPA ECHO SDWA, EPA public
-          water system service areas, CDC/ATSDR Social Vulnerability Index, Census TIGER/Line, and
-          the U.S. Drought Monitor.
+          <span>Public-data screening model built by Scott Campbell. Sources: EPA ECHO SDWA, EPA
+          public water system service areas, CDC/ATSDR Social Vulnerability Index, Census
+          TIGER/Line, and the U.S. Drought Monitor.</span>
         </p>
       </div>
     </main>
 
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=abstract-5"></script>
+    <script src="app.js?v=abstract-6"></script>
   </body>
 </html>
