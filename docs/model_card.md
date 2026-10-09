@@ -35,7 +35,7 @@ health-based violation** in the following 24 months.
 - **Model score-as-of-T: ROC AUC 0.74**; the **top 100** systems by score were
   **~9.7× more likely** than the base rate to have a subsequent health-based
   violation (precision@100 ≈ 20% vs. 2.07%).
-- **Honest comparison:** the model roughly **ties** a simple "prior 36-month
+- **Baseline comparison:** the model roughly **ties** a simple "prior 36-month
   violation count" baseline (AUC 0.735) and does not beat it on this single outcome.
   The model's value-add is *combining* compliance, enforcement, vulnerability,
   drought, and funding signals with explainability and an equity lens - not

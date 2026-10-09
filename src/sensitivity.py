@@ -8,7 +8,7 @@ rankings actually depend on them, two ways:
    of the top 100, and how often a system changes review tier).
 2. One-at-a-time: zero each component in turn to see which drive the ranking.
 
-A senior reviewer wants to know the hand-picked weights are not fragile; this shows
+The point is to check that the hand-picked weights are not fragile; this shows
 the ranking is stable under reasonable weight uncertainty.
 """
 

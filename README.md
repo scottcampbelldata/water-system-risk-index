@@ -1,6 +1,6 @@
 # Water System Risk & Funding Priority Index
 
-Senior-level portfolio analytics project for identifying small public drinking water systems that may deserve review for compliance support, technical assistance, infrastructure funding, or resilience planning.
+Analytics project for identifying small public drinking water systems that may deserve review for compliance support, technical assistance, infrastructure funding, or resilience planning.
 
 This project is an explainable screening model built from public data. It is not a regulatory claim, legal finding, engineering siting tool, official risk assessment, or statement that any water system is unsafe.
 

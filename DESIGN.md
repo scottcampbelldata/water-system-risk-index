@@ -12,8 +12,7 @@ There is no card, no drop shadow and no corner radius anywhere in the system.
 3. **No drop shadows.** Every `box-shadow` in the stylesheet is an inset hairline or
    `none`. A shadow used for elevation is a bug.
 4. **No eyebrows, no section numbering, no scroll cues, no decorative status dots.**
-5. **No em dashes or en dashes in any visible string.** Use a period, a comma, or a
-   plain hyphen. This is enforced by a scan, not by taste.
+5. **Plain punctuation in visible strings.** Use a period, a comma, or a plain hyphen.
 6. **Ink is never `#000`.** Not in either theme, not in the print stylesheet.
 7. **One family.** Archivo variable only. No second typeface, no icon font, no emoji.
 
@@ -75,7 +74,7 @@ The ground carries a slight temperature drift (two fixed radial gradients toward
 `--paper-warm` and `--paper-cool`) so it reads as a printed sheet rather than a flat fill.
 
 **Banned palette family.** Warm-cream backgrounds, clay and oxblood accents, and warm
-near-black text are the documented AI-default family. Do not reintroduce
+near-black text are out. Do not reintroduce
 `#edede8`-through-`#f7f5f1` grounds, `#b6553a`-family accents, or `#1b1814`-family ink.
 
 **Every colour in this system sits on the cool side of neutral.** The whole palette was

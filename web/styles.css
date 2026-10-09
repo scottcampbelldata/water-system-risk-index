@@ -80,8 +80,7 @@
   --ov-swatch-edge: rgba(12, 12, 11, 0.28);
 
   /* Choropleth ramp: pure neutral, low score to high. Score reads as ink
-     density, the way the rest of the sheet works. No warm cast, because
-     cream-to-clay is the documented AI-default family. */
+     density, the way the rest of the sheet works. No warm cast. */
   --c1: #eef2f7;
   --c2: #cfdbeb;
   --c3: #a3b8d8;
