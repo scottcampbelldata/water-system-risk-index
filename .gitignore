@@ -28,3 +28,7 @@ Thumbs.db
 .vscode/
 .idea/
 .webstack/
+
+# Local files
+*.log
+/*.jpeg

@@ -1,5 +1,9 @@
 # Water System Risk & Funding Priority Index
 
+**A screening tool that ranks small public drinking water systems for compliance and funding review, built from public EPA, CDC and Census data.**
+
+Live at [water-risk.scottcampbell.io](https://water-risk.scottcampbell.io). More of my work is at [scottcampbell.io](https://scottcampbell.io).
+
 Analytics project for identifying small public drinking water systems that may deserve review for compliance support, technical assistance, infrastructure funding, or resilience planning.
 
 This project is an explainable screening model built from public data. It is not a regulatory claim, legal finding, engineering siting tool, official risk assessment, or statement that any water system is unsafe.
