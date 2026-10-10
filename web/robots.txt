@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://water-risk.scottcampbell.io/sitemap.xml
