@@ -597,6 +597,11 @@ thead th,
   min-width: 0;
 }
 
+/* Reserve the map's space before app.js draws it, so the page does not jump. */
+#heroMap {
+  min-height: min(56vh, 500px);
+}
+
 #heroMap svg {
   display: block;
   height: min(56vh, 500px);
@@ -1831,6 +1836,12 @@ th:nth-child(5) {
 
   .survey-grid {
     align-items: start;
+  }
+
+  #heroMap {
+    min-height: 0;
+    aspect-ratio: 620 / 742;
+    max-height: 62vh;
   }
 
   #heroMap svg {
