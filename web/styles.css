@@ -2305,6 +2305,7 @@ th:nth-child(5) {
 }
 @media (max-width: 600px) {
   .glance { display: none; }
+  .volume-title { font-size: 40px; line-height: 1.06; }
 }
 
 /* Slim project strip under the site bar: project name, run, theme. */
