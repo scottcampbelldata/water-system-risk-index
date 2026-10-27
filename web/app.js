@@ -403,7 +403,7 @@ function renderMetadataFigures() {
   if (!m) return;
   els.metricTotal.textContent = formatNumber(m.systemCount);
   els.metricHigh.textContent = formatNumber(m.highReviewCount);
-  els.metricCritical.textContent = formatNumber(m.criticalReviewCount);
+  if (els.metricCritical) els.metricCritical.textContent = formatNumber(m.criticalReviewCount);
   els.metricValidation.textContent = `${m.validationPassCount} of ${m.validationCheckCount}`;
 
   if (els.editionLine) {
@@ -440,7 +440,7 @@ function renderMetrics() {
   els.metricTotal.textContent = formatNumber(summary.total);
   els.metricHigh.textContent = formatNumber(high);
   if (els.ledgerModerate) els.ledgerModerate.textContent = formatNumber(tierCount("Moderate Review"));
-  els.metricCritical.textContent = formatNumber(critical);
+  if (els.metricCritical) els.metricCritical.textContent = formatNumber(critical);
   els.metricValidation.textContent =
     `${state.metadata.validationPassCount} of ${state.metadata.validationCheckCount}`;
 

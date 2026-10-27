@@ -25,17 +25,31 @@
     <link rel="preconnect" href="https://water-api.scottcampbell.io" crossorigin>
     <link rel="preconnect" href="https://a.tile.openstreetmap.org">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="preload" href="fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/source-serif-4-text.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/libertinus-serif-display-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="styles.css?v=abstract-10">
+    <link rel="stylesheet" href="styles.css?v=preprint-1">
     <script src="theme.js?v=ui-1"></script>
   </head>
   <body>
     <a class="skip-link" href="#ranked-systems">Skip to the ranked list</a>
 
-    <header class="masthead">
+    <header class="pp-bar">
+      <div class="pp-bar-inner">
+        <a class="pp-brand" href="https://scottcampbell.io/">Scott Campbell</a>
+        <nav class="pp-nav" aria-label="Site">
+          <a href="https://scottcampbell.io/projects/water-system-risk-index/">Case study</a>
+          <a class="pp-nav-wide" href="https://github.com/scottcampbelldata/water-system-risk-index">Source</a>
+          <a class="pp-nav-wide" href="https://scottcampbell.io/projects/">Projects</a>
+          <a href="https://scottcampbellconsulting.com/">Consulting</a>
+          <a href="https://scottcampbellconsulting.com/contact/">Contact</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="masthead">
       <div class="masthead-inner">
-        <h1 class="volume-title" translate="no">Water System Risk &amp; Funding Priority Index</h1>
+        <p class="strip-name" translate="no">Water risk index</p>
         <div class="masthead-meta">
           <p class="edition" id="editionLine">Ohio</p>
           <div class="switch" id="themeControl" role="group" aria-label="Colour theme">
@@ -45,23 +59,28 @@
           </div>
         </div>
       </div>
-    </header>
+    </div>
 
     <main class="app app-shell" id="app">
       <div class="sheet">
 
         <!-- The finding, carried by the state map it describes. -->
         <section class="finding" aria-labelledby="finding-heading">
-          <h2 class="sr-only" id="finding-heading">Principal finding</h2>
-
           <div class="hero">
             <div class="hero-text">
+              <p class="report-kicker">Public-data screening index, Ohio drinking water</p>
+              <h1 class="volume-title" translate="no">Water System Risk &amp; Funding Priority Index</h1>
+              <h2 class="sr-only" id="finding-heading">Principal finding</h2>
               <p class="finding-statement">
                 <b id="metricHigh">&nbsp;</b> of Ohio&rsquo;s <b id="metricTotal">&nbsp;</b>
                 public drinking water systems rank <b>High Review</b>.
               </p>
               <p class="finding-note" id="findingCluster"></p>
               <p class="finding-source" id="sourceNote"></p>
+              <dl class="glance">
+                <div><dt>Validation checks passed</dt><dd class="settles" id="metricValidation">&nbsp;</dd></div>
+                <div><dt>Backtest</dt><dd>ROC AUC 0.740, against 0.734 for counting prior violations alone. The index does not beat that baseline.</dd></div>
+              </dl>
             </div>
 
             <figure class="hero-plate plate">
@@ -75,24 +94,6 @@
             </figure>
           </div>
 
-          <dl class="ledger settles">
-            <div>
-              <dt>Critical review</dt>
-              <dd id="metricCritical">&nbsp;</dd>
-            </div>
-            <div>
-              <dt>Moderate review</dt>
-              <dd id="ledgerModerate">&nbsp;</dd>
-            </div>
-            <div>
-              <dt>Approximate geometry</dt>
-              <dd id="ledgerApprox">&nbsp;</dd>
-            </div>
-            <div>
-              <dt>Validation checks passed</dt>
-              <dd id="metricValidation">&nbsp;</dd>
-            </div>
-          </dl>
         </section>
 
         <nav class="jump" aria-label="Sections of this volume">
@@ -311,8 +312,24 @@
       </div>
     </main>
 
+    <footer>
+      <section class="pp-consult" aria-labelledby="pp-consult-title">
+        <div class="pp-consult-inner">
+          <div>
+            <h2 id="pp-consult-title">Need analysis like this?</h2>
+            <p>I build reporting, dashboards and analysis for small businesses through Scott Campbell Consulting.</p>
+          </div>
+          <div class="pp-actions">
+            <a class="pp-btn" href="https://scottcampbellconsulting.com/contact/">Contact me</a>
+            <a class="pp-link" href="https://scottcampbellconsulting.com/">Scott Campbell Consulting</a>
+          </div>
+        </div>
+      </section>
+      <p class="pp-credit">Made by <a href="https://scottcampbell.io/">Scott Campbell</a>. A portfolio project. Read the <a href="https://scottcampbell.io/projects/water-system-risk-index/">case study</a>.</p>
+    </footer>
+
     <script src="vendor/leaflet/leaflet.js"></script>
     <script src="config.js"></script>
-    <script src="app.js?v=abstract-9"></script>
+    <script src="app.js?v=preprint-1"></script>
   </body>
 </html>

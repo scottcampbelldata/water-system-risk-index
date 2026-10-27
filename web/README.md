@@ -14,7 +14,7 @@ Deployable files (output directory = `web/`):
 - `theme.js` - applies the stored theme before first paint
 - `app.js`
 - `favicon.svg`
-- `fonts/*.woff2` - Archivo variable, self-hosted because CSP is `font-src 'self'`
+- `fonts/*.woff2` - Libertinus Serif Display, Source Serif 4 and IBM Plex Mono (SIL OFL), self-hosted because CSP is `font-src 'self'`
 - `vendor/leaflet/*`
 - `data/ohio_map.json`, `data/ohio_counties.geojson` - static map assets (well under 25 MiB)
 
