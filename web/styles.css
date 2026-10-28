@@ -2368,3 +2368,9 @@ thead th {
 .text-button {
   font-size: 15px;
 }
+
+/* The edition line fills in after the metadata loads and wraps to two lines
+   on narrow phones; hold that room so the page below does not jump. */
+@media (max-width: 429px) {
+  .edition { min-height: 2lh; }
+}
